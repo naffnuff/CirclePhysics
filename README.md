@@ -1,7 +1,9 @@
 # Circle Physics
 A 2D physics simulator of circles.
 
-## Build instructions
+## Usage
+### Windows
+There is a Visual Studion solution in `vs2022`.
 ### Linux
 Build and run with the following line
 ```
