@@ -1,25 +1,28 @@
 #include <iostream>
 
 #include "Renderer.h"
+#include "Engine.h"
 
 int main(int argc, char* argv[]) {
     // Default values
-    int initialWindowWidth = 1920;
-    int initialWindowHeight = 1080;
-    float minRadius = 10.0f;
-    float maxRadius = 30.0f;
+    float initialWindowWidth = 1920.f;
+    float initialWindowHeight = 1080.f;
+    float minRadius = 10.f;
+    float maxRadius = 30.f;
     int spawnLimit = 100000;
     float gravity = 98.1f;
     bool outlineCircles = true;
+    float spawnRate = 1.f;
     
     // Parse command line arguments
-    if (argc > 1) initialWindowWidth = std::atoi(argv[1]);
-    if (argc > 2) initialWindowHeight = std::atoi(argv[2]);
+    if (argc > 1) initialWindowWidth = (float)std::atof(argv[1]);
+    if (argc > 2) initialWindowHeight = (float)std::atof(argv[2]);
     if (argc > 3) minRadius = (float)std::atof(argv[3]);
     if (argc > 4) maxRadius = (float)std::atof(argv[4]);
     if (argc > 5) spawnLimit = std::atoi(argv[5]);
     if (argc > 6) gravity = (float)std::atof(argv[6]);
     if (argc > 7) outlineCircles = (float)std::atoi(argv[7]);
+    if (argc > 8) spawnRate = (float)std::atof(argv[8]);
     
     // Validate input
     if (initialWindowWidth <= 0) initialWindowWidth = 800;
@@ -34,10 +37,15 @@ int main(int argc, char* argv[]) {
     std::cout << "Spawn limit: " << spawnLimit << std::endl;
     std::cout << "Gravity: " << gravity << std::endl;
     std::cout << "Outlined circles: " << outlineCircles << std::endl;
+    std::cout << "Spawn rate: " << spawnRate << " circles / second" << std::endl;
 
     try
     {
-        CirclePhysics::Renderer renderer = CirclePhysics::Renderer((float)initialWindowWidth, (float)initialWindowHeight, minRadius, maxRadius, spawnLimit, gravity, outlineCircles);
+        // The engine will always operate in a space that is normalized over the initial window height
+        CirclePhysics::Engine engine({ minRadius / initialWindowHeight, maxRadius / initialWindowHeight, spawnLimit, gravity, initialWindowWidth / initialWindowHeight, initialWindowHeight, spawnRate });
+        engine.initialize();
+
+        CirclePhysics::Renderer renderer({ initialWindowWidth, initialWindowHeight, outlineCircles }, engine);
         renderer.intialize();
         renderer.run();
         renderer.cleanUp();
