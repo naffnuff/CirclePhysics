@@ -15,6 +15,10 @@ void Engine::step(double simulationTime, double deltaTime)
         CircleRenderData& renderData = m_circleRenderData[i];
         CirclePhysicsData& physicsData = m_circlePhysicsData[i];
 
+        if (physicsData.disablePhysics)
+        {
+            continue;
+        }
         // Update position
         renderData.position += physicsData.velocity * deltaTime;
     }
@@ -30,6 +34,10 @@ void Engine::detectCollisions()
     // For all potential circle pairs
     for (int i = 0; i < m_circleCount; ++i)
     {
+        if (m_circlePhysicsData[i].disablePhysics)
+        {
+            continue;
+        }
         CircleRenderData& first = m_circleRenderData[i];
         // Start by checking world boundaries
         if (first.position.x - first.radius < -m_worldBoundX) // Left wall
@@ -80,29 +88,29 @@ void Engine::detectCollisions()
 
         for (int j = i + 1; j < m_circleCount; ++j)
         {
-            // TODO Broad phase (AABB check)
-            //if (AABBsOverlap(circles[i].aabb, circles[j].aabb))
+            if (m_circlePhysicsData[j].disablePhysics)
             {
-                // Narrow phase if broad phase passes
-                CircleRenderData& second = m_circleRenderData[j];
+                continue;
+            }
 
-                // Finer collision detection with squared numbers for efficiency
-                const float radii = first.radius + second.radius;
-                const float radiiSquared = radii * radii;
-                const Vector2 difference = second.position - first.position;
-                const float distanceSquared = difference.lengthSquared();
+            CircleRenderData& second = m_circleRenderData[j];
 
-                if (distanceSquared < radiiSquared)
-                {
-                    // Save as a collision
-                    const float penetration = radii - difference.length();
-                    m_collisions.push_back({
-                        m_circlePhysicsData[i],
-                        &m_circlePhysicsData[j],
-                        difference.normalized(),
-                        difference.length()
-                    });
-                }
+            // Finer collision detection with squared numbers for efficiency
+            const float radii = first.radius + second.radius;
+            const float radiiSquared = radii * radii;
+            const Vector2 difference = second.position - first.position;
+            const float distanceSquared = difference.lengthSquared();
+
+            if (distanceSquared < radiiSquared)
+            {
+                // Save as a collision
+                const float penetration = radii - difference.length();
+                m_collisions.push_back({
+                    m_circlePhysicsData[i],
+                    &m_circlePhysicsData[j],
+                    difference.normalized(),
+                    penetration
+                });
             }
         }
     }
@@ -136,24 +144,24 @@ void Engine::resolveCollision(const Collision& collision)
         }
 
         // Compute restitution (bounciness factor, 1 for perfectly elastic)
-        float restitution = 1.0f; // Change this based on your physics needs
+        float restitution = 0.8f;
 
-        float mass = 1.0f;
-        // Compute impulse scalar
-        float inverseMass1 = 1.0f / mass;
-        float inverseMass2 = 1.0f / mass;
-        float impulseMagnitude = -(1.0f + restitution) * velocityAlongNormal / (inverseMass1 + inverseMass2);
+        const float totalInverseMass = first.inverseMass + second.inverseMass;
+        const float impulseMagnitude = -(1.0f + restitution) * velocityAlongNormal / totalInverseMass;
 
         // Compute impulse vector
         Vector2 impulse = collision.normal * impulseMagnitude;
 
         // Apply impulse to velocities
-        first.velocity -= impulse * inverseMass1;
-        second.velocity += impulse * inverseMass2;
+        first.velocity -= impulse * first.inverseMass;
+        second.velocity += impulse * second.inverseMass;
 
-        Vector2 correction = collision.normal * collision.penetration;
-        //first.renderData.position -= correction;
-        //second.renderData.position += correction;
+        if (totalInverseMass > 0.f)
+        {
+            Vector2 correction = collision.normal * (collision.penetration / totalInverseMass);
+            first.renderData.position -= correction * first.inverseMass;
+            second.renderData.position += correction * second.inverseMass;
+        }
 
         {
             // Debug output
@@ -183,6 +191,10 @@ void Engine::spawnCircles(double simulationTime)
     {
         const float radius = radiusDist(m_numberGenerator);
 
+        const float density = 1.f;
+        // PI can be excluded since there are no real-world units in this engine
+        const float mass = radius * radius * density;
+
         m_circleRenderData.push_back({
             Vector2(xPosDist(m_numberGenerator), yPosDist(m_numberGenerator)),
             colorDist(m_numberGenerator),
@@ -194,6 +206,7 @@ void Engine::spawnCircles(double simulationTime)
 
         m_circlePhysicsData.push_back({
             Vector2(velDist(m_numberGenerator), velDist(m_numberGenerator)),
+            mass == 0.f ? 0.f : 1.f / mass, // let mass = 0 mean infinite mass
             m_circleRenderData.back()
         });
 

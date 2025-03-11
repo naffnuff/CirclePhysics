@@ -37,8 +37,14 @@ private:
         // Velocity
         Vector2 velocity;
 
+        // 1 / object mass
+        // 0.f is a valid value, it means the object has infinite mass and cannot be moved by other objects
+        float inverseMass = 0.f;
+
         // The render data representing the same circle
         CircleRenderData& renderData;
+
+        bool disablePhysics = false;
     };
 
     struct Collision
@@ -89,8 +95,8 @@ public:
         xPosDist = std::uniform_real_distribution<float>(-m_config.initialAspectRatio * 0.9f, m_config.initialAspectRatio * 0.9f);
         yPosDist = std::uniform_real_distribution<float>(-0.9f, 0.9f);
 
-        m_circleRenderData.reserve(m_config.spawnLimit);
-        m_circlePhysicsData.reserve(m_config.spawnLimit);
+        m_circleRenderData.reserve(m_config.spawnLimit * 2);
+        m_circlePhysicsData.reserve(m_config.spawnLimit * 2);
     }
 
     void setWorldBounds(float worldBoundX, float worldBoundY)

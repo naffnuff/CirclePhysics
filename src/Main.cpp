@@ -6,11 +6,11 @@
 int main(int argc, char* argv[])
 {
     // Default values
-    float initialWindowWidth = 1920.f;
-    float initialWindowHeight = 1080.f;
+    float initialWindowWidth = 1024.f;
+    float initialWindowHeight = 768.f;
     float minRadius = 10.f;
-    float maxRadius = 30.f;
-    int spawnLimit = 5000;
+    float maxRadius = 100.f;
+    int spawnLimit = 10;
     float gravity = 98.1f;
     bool outlineCircles = true;
     float spawnRate = 1.f;
