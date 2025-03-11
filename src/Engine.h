@@ -4,6 +4,8 @@
 #include <random>
 #include <functional>
 
+#include "Vector2.h"
+
 namespace CirclePhysics {
 
 
@@ -11,8 +13,7 @@ namespace CirclePhysics {
 struct CircleRenderData
 {
     // Position
-    float x = 0;
-    float y = 0;
+    Vector2 position;
 
     // Color
     float r = 0;
@@ -34,8 +35,23 @@ private:
     struct CirclePhysicsData
     {
         // Velocity
-        float dx = 0.f;
-        float dy = 0.f;
+        Vector2 velocity;
+
+        // The render data representing the same circle
+        CircleRenderData& renderData;
+    };
+
+    struct Collision
+    {
+        // Colliding pair
+        CirclePhysicsData& first;
+        CirclePhysicsData* second; // nullable to represent collision against walls
+
+        // Collision normal
+        Vector2 normal;
+
+        // How much closer are the objects than their radii allow?
+        float penetration = 0.f;
     };
 
 public:
@@ -68,10 +84,13 @@ public:
 
         colorDist = std::uniform_real_distribution<float>(0.0f, 1.0f);
         radiusDist = std::uniform_real_distribution<float>(config.minRadius, config.maxRadius);
-        velDist = std::uniform_real_distribution<float>(-0.001f, 0.001f); // Velocity for animation
+        velDist = std::uniform_real_distribution<float>(-0.5f, 0.5f); // Velocity for animation
 
         xPosDist = std::uniform_real_distribution<float>(-m_config.initialAspectRatio * 0.9f, m_config.initialAspectRatio * 0.9f);
         yPosDist = std::uniform_real_distribution<float>(-0.9f, 0.9f);
+
+        m_circleRenderData.reserve(m_config.spawnLimit);
+        m_circlePhysicsData.reserve(m_config.spawnLimit);
     }
 
     void setWorldBounds(float worldBoundX, float worldBoundY)
@@ -80,24 +99,28 @@ public:
         m_worldBoundY = worldBoundY;
     }
 
-    void applyToCircleRenderData(std::function<void(std::vector<CircleRenderData>&)> function)
+    void applyToCircleRenderData(std::function<void(const std::vector<CircleRenderData>&)> function)
     {
         function(m_circleRenderData);
     }
 
-    void initialize();
     void spawnCircles(double simulationTime);
     void step(double simulationTime, double deltaTime);
+    void detectCollisions();
+    void resolveCollisions();
+    void resolveCollision(const Collision& collision);
 
 private:
     const Config m_config;
 
-    // we keep the circle data in two arrays to keep GPU data minimal
-    std::vector<CircleRenderData> m_circleRenderData; // here goes everyhting that gets sent to the GPU...
-    std::vector<CirclePhysicsData> m_circlePhysicsData; //...here goes the rest
+    // We keep the circle data in two arrays to keep GPU data minimal
+    std::vector<CircleRenderData> m_circleRenderData; // Here goes everyhting that gets sent to the GPU...
+    std::vector<CirclePhysicsData> m_circlePhysicsData; //...and here goes the rest
 
-    // just for cleanness, let's keep the common size of the arrays here
-    int circleCount = 0;
+    std::vector<Collision> m_collisions;
+
+    // For the sake of cleanness, let's keep the common size of the arrays here
+    int m_circleCount = 0;
 
     float m_worldBoundX = 0.f;
     float m_worldBoundY = 0.f;
