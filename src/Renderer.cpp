@@ -227,11 +227,25 @@ void Renderer::run()
     int nbFrames = 0;
     double fps = 0.0;
 
+    // Fixed time step variables
+    const double fixedTimeStep = 1.0 / m_config.physicsFrequency;
+    double accumulator = 0.0;
+
     // Main loop
     while (!glfwWindowShouldClose(m_window))
     {
         // Calculate and report FPS
         double currentTime = glfwGetTime();
+        double frameTime = currentTime - lastTime;
+        lastTime = currentTime;
+
+        // Cap the maximum frame time to avoid spiral of death
+        if (frameTime > 0.25)
+            frameTime = 0.25;
+
+        // Accumulate time
+        accumulator += frameTime;
+
         nbFrames++;
 
         // Print FPS to stdout every second
@@ -265,9 +279,12 @@ void Renderer::run()
 
         m_engine.setWorldBounds(scale * aspectRatio, scale);
 
-        double time = glfwGetTime();
-        m_engine.step(time, time - lastTime);
-        lastTime = time;
+        // Fixed time step physics updates
+        while (accumulator >= fixedTimeStep)
+        {
+            m_engine.step(currentTime, fixedTimeStep);
+            accumulator -= fixedTimeStep;
+        }
 
         // Update instance buffer with new positions
         glBindBuffer(GL_ARRAY_BUFFER, m_instanceVBO);

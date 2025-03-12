@@ -15,10 +15,12 @@ void Engine::step(double simulationTime, double deltaTime)
         CircleRenderData& renderData = m_circleRenderData[i];
         CirclePhysicsData& physicsData = m_circlePhysicsData[i];
 
-        if (physicsData.disablePhysics)
+        // Apply gravity
+        if (physicsData.inverseMass > 0) // Don't apply to infinite mass objects
         {
-            continue;
+            physicsData.velocity.y -= m_config.gravity * deltaTime;
         }
+
         // Update position
         renderData.position += physicsData.velocity * deltaTime;
     }
@@ -34,10 +36,6 @@ void Engine::detectCollisions()
     // For all potential circle pairs
     for (int i = 0; i < m_circleCount; ++i)
     {
-        if (m_circlePhysicsData[i].disablePhysics)
-        {
-            continue;
-        }
         CircleRenderData& first = m_circleRenderData[i];
         // Start by checking world boundaries
         if (first.position.x - first.radius < -m_worldBoundX) // Left wall
@@ -88,11 +86,6 @@ void Engine::detectCollisions()
 
         for (int j = i + 1; j < m_circleCount; ++j)
         {
-            if (m_circlePhysicsData[j].disablePhysics)
-            {
-                continue;
-            }
-
             CircleRenderData& second = m_circleRenderData[j];
 
             // Finer collision detection with squared numbers for efficiency
@@ -162,21 +155,12 @@ void Engine::resolveCollision(const Collision& collision)
             first.renderData.position -= correction * first.inverseMass;
             second.renderData.position += correction * second.inverseMass;
         }
-
-        {
-            // Debug output
-            //std::cout << std::fixed << std::setprecision(5) << "Normal: " << collision.normal.x << "," << collision.normal.y << " Penetration: " << collision.penetration << " Correction: " << correction.x << "," << correction.y << std::endl;
-        }
     }
     else // second object is immovable, for example a wall
     {
         CirclePhysicsData& circle = collision.first;
 
-        //std::cout << std::fixed << std::setprecision(5) << "Velocity before: " << circle.velocity.x << "," << circle.velocity.x << std::endl;
-
         circle.velocity = circle.velocity.reflect(collision.normal);
-
-        //std::cout << std::fixed << std::setprecision(5) << "Velocity after: " << circle.velocity.x << "," << circle.velocity.x << std::endl;
 
         Vector2 correction = collision.normal * collision.penetration;
         circle.renderData.position += correction;

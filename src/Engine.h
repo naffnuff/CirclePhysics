@@ -43,8 +43,6 @@ private:
 
         // The render data representing the same circle
         CircleRenderData& renderData;
-
-        bool disablePhysics = false;
     };
 
     struct Collision

@@ -11,9 +11,10 @@ int main(int argc, char* argv[])
     float minRadius = 10.f;
     float maxRadius = 100.f;
     int spawnLimit = 10;
-    float gravity = 98.1f;
+    float gravity = 0.f;
     bool outlineCircles = true;
     float spawnRate = 1.f;
+    float physicsFrequency = 60.f;
     
     if (argc > 1) initialWindowWidth = (float)std::atof(argv[1]);
     if (argc > 2) initialWindowHeight = (float)std::atof(argv[2]);
@@ -23,27 +24,23 @@ int main(int argc, char* argv[])
     if (argc > 6) gravity = (float)std::atof(argv[6]);
     if (argc > 7) outlineCircles = (float)std::atoi(argv[7]);
     if (argc > 8) spawnRate = (float)std::atof(argv[8]);
-    
-    if (initialWindowWidth <= 0) initialWindowWidth = 800;
-    if (initialWindowHeight <= 0) initialWindowHeight = 600;
-    if (minRadius <= 0) minRadius = 10.0f;
-    if (maxRadius < minRadius) maxRadius = minRadius * 2;
-    if (spawnLimit <= 0) spawnLimit = 500;
+    if (argc > 9) physicsFrequency = (float)std::atof(argv[9]);
     
     std::cout << "Starting simulation with:" << std::endl;
-    std::cout << "Window size: " << initialWindowWidth << "x" << initialWindowHeight << std::endl;
+    std::cout << "Window size: " << (int)initialWindowWidth << "x" << (int)initialWindowHeight << std::endl;
     std::cout << "Radius range: " << minRadius << " to " << maxRadius << std::endl;
     std::cout << "Spawn limit: " << spawnLimit << std::endl;
     std::cout << "Gravity: " << gravity << std::endl;
     std::cout << "Outlined circles: " << outlineCircles << std::endl;
     std::cout << "Spawn rate: " << spawnRate << " circles / second" << std::endl;
+    std::cout << "Physics-simulation frequency: " << physicsFrequency << " Hz" << std::endl;
 
     try
     {
         // The engine will always operate in a space that is normalized over the initial window height
         CirclePhysics::Engine engine({ minRadius / initialWindowHeight, maxRadius / initialWindowHeight, spawnLimit, gravity, initialWindowWidth / initialWindowHeight, initialWindowHeight, spawnRate });
 
-        CirclePhysics::Renderer renderer({ initialWindowWidth, initialWindowHeight, outlineCircles }, engine);
+        CirclePhysics::Renderer renderer({ initialWindowWidth, initialWindowHeight, outlineCircles, physicsFrequency }, engine);
         renderer.intialize();
         renderer.run();
         renderer.cleanUp();

@@ -17,6 +17,7 @@ public:
         float initialWindowWidth = 0.f;
         float initialWindowHeight = 0.f;
         bool outlineCircles = true;
+        float physicsFrequency = 0.f;
     };
 
     Renderer(const Config& config, Engine& engine)
