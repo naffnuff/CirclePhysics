@@ -51,8 +51,8 @@ GLuint compileShader(GLenum type, const char* source)
     if (!success)
     {
         glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "Shader compilation error: " << infoLog << std::endl;
-        return 0;
+        glfwTerminate();
+        throw std::runtime_error(std::string("Shader compilation error: ") + infoLog);
     }
 
     return shader;
@@ -76,8 +76,8 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
     if (!success)
     {
         glGetProgramInfoLog(program, 512, NULL, infoLog);
-        std::cerr << "Shader program linking error: " << infoLog << std::endl;
-        return 0;
+        glfwTerminate();
+        throw std::runtime_error(std::string("Shader program linking error: ") + infoLog);
     }
 
     // Clean up shaders
@@ -89,7 +89,6 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
 
 void Renderer::intialize()
 {
-
     // Initialize GLFW
     if (!glfwInit())
     {
@@ -137,11 +136,6 @@ void Renderer::intialize()
 
     // Create and compile shaders
     m_circleShaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
-    if (!m_circleShaderProgram)
-    {
-        glfwTerminate();
-        throw std::runtime_error("Failed to create shaders");
-    }
 
     // Quad vertices for a unit circle (actually a square that will be made circular in the fragment shader)
     float vertices[] = {
@@ -158,34 +152,36 @@ void Renderer::intialize()
     };
 
     // Create buffers for circles
-    glGenVertexArrays(1, &m_circleVAO);
-    glGenBuffers(1, &m_VBO);
-    glGenBuffers(1, &m_EBO);
-    glGenBuffers(1, &m_instanceVBO);
+    glGenVertexArrays(1, &m_vertexArray);
+    glGenBuffers(1, &m_vertexBuffer);
+    glGenBuffers(1, &m_indexBuffer);
+    glGenBuffers(1, &m_instanceBuffer);
 
-    // Bind VAO
-    glBindVertexArray(m_circleVAO);
+    // Bind vertex array
+    glBindVertexArray(m_vertexArray);
 
-    // Setup vertex buffer
-    glBindBuffer(GL_ARRAY_BUFFER, m_VBO);
+    // Static data
+
+    // Setup buffer for the quad vertices
+    glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
-    // Setup element buffer
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_EBO);
+    // Setup buffer for the triangle indices
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Instance data
 
     // Position attribute
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // Setup instance buffer
-    glBindBuffer(GL_ARRAY_BUFFER, m_instanceVBO);
-    m_engine.applyToCircleRenderData([](const std::vector<CircleRenderData>& circles)
-        {
-            glBufferData(GL_ARRAY_BUFFER, circles.size() * sizeof(CircleRenderData), circles.data(), GL_DYNAMIC_DRAW);
-        });
+    // Setup buffer for the circle instances
+    glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
+    glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
 
     // Instance attributes
+    
     // Position offset
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)0);
     glEnableVertexAttribArray(1);
@@ -254,10 +250,7 @@ void Renderer::run()
         if (currentTime - lastReportTime >= 1.0)
         {
             fps = static_cast<double>(nbFrames) / (currentTime - lastReportTime);
-            m_engine.applyToCircleRenderData([](const std::vector<CircleRenderData>& circles)
-                {
-                    std::cout << "Circle count: " << circles.size() << std::endl;
-                });
+            std::cout << "Circle count: " << m_engine.getCircleCount() << std::endl;
             std::cout << "Average FPS: " << std::fixed << std::setprecision(1) << fps << std::endl;
             std::cout << "Window size: " << (int)m_windowWidth << "x" << (int)m_windowHeight << std::endl;
             nbFrames = 0;
@@ -288,24 +281,21 @@ void Renderer::run()
             accumulator -= fixedTimeStep;
         }
 
-        // Update instance buffer with new positions
-        glBindBuffer(GL_ARRAY_BUFFER, m_instanceVBO);
-        m_engine.applyToCircleRenderData([](const std::vector<CircleRenderData>& circles)
-        {
-            glBufferData(GL_ARRAY_BUFFER, circles.size() * sizeof(CircleRenderData), circles.data(), GL_DYNAMIC_DRAW);
-        });
+        // Update circle-instance buffer with new data
+        glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
+        glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        // Draw circles
+        // Apply shaders
         glUseProgram(m_circleShaderProgram);
+
+        // Set uniforms
         glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, projection);
         glUniform1i(m_outlineCirclesUniform, m_config.outlineCircles);
 
-        glBindVertexArray(m_circleVAO);
-        m_engine.applyToCircleRenderData([](const std::vector<CircleRenderData>& circles)
-        {
-            glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, (GLsizei)circles.size());
-        });
+        // Draw circles
+        glBindVertexArray(m_vertexArray);
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, m_engine.getCircleCount());
         glBindVertexArray(0);
 
         // Swap buffers and poll events
@@ -317,21 +307,21 @@ void Renderer::run()
 
 void Renderer::cleanUp()
 {
-    if (m_circleVAO)
+    if (m_vertexArray)
     {
-        glDeleteVertexArrays(1, &m_circleVAO);
+        glDeleteVertexArrays(1, &m_vertexArray);
     }
-    if (m_VBO)
+    if (m_vertexBuffer)
     {
-        glDeleteBuffers(1, &m_VBO);
+        glDeleteBuffers(1, &m_vertexBuffer);
     }
-    if (m_EBO)
+    if (m_indexBuffer)
     {
-        glDeleteBuffers(1, &m_EBO);
+        glDeleteBuffers(1, &m_indexBuffer);
     }
-    if (m_instanceVBO)
+    if (m_instanceBuffer)
     {
-        glDeleteBuffers(1, &m_instanceVBO);
+        glDeleteBuffers(1, &m_instanceBuffer);
     }
     if (m_circleShaderProgram)
     {

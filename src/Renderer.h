@@ -41,10 +41,10 @@ private:
     float m_windowWidth = 0.f;
     float m_windowHeight = 0.f;
     GLFWwindow* m_window = nullptr;
-    GLuint m_circleVAO = 0;
-    GLuint m_VBO = 0;
-    GLuint m_EBO = 0;
-    GLuint m_instanceVBO = 0;
+    GLuint m_vertexArray = 0;
+    GLuint m_vertexBuffer = 0;
+    GLuint m_indexBuffer = 0;
+    GLuint m_instanceBuffer = 0;
     GLuint m_circleShaderProgram = 0;
     GLint m_projectionUniform = 0;
     GLint m_outlineCirclesUniform = 0;

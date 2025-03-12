@@ -103,17 +103,21 @@ public:
         m_worldBoundY = worldBoundY;
     }
 
-    void applyToCircleRenderData(std::function<void(const std::vector<CircleRenderData>&)> function)
+    int getCircleCount() const
     {
-        function(m_circleRenderData);
+        return m_circleCount;
+    }
+    const CircleRenderData* getRenderData() const
+    {
+        return m_circleRenderData.data();
     }
 
-    void spawnCircles(double simulationTime);
     void step(double simulationTime, double deltaTime);
     void resolveWallCollisions();
     void detectCollisions();
     void resolveCollisions();
     void resolveCollision(const Collision& collision);
+    void spawnCircles(double simulationTime);
 
 private:
     const Config m_config;
