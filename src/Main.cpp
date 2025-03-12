@@ -8,14 +8,14 @@ int main(int argc, char* argv[])
     // Default values
     float initialWindowWidth = 1024.f;
     float initialWindowHeight = 768.f;
-    float minRadius = 10.f;
-    float maxRadius = 100.f;
-    int spawnLimit = 100;
+    float minRadius = 5.f;
+    float maxRadius = 50.f;
+    int spawnLimit = 500;
     float gravity = 1.f; // intital world height / second^2
-    float spawnRate = 60.f; // per second
+    float spawnRate = 1.f; // per second
     float restitution = 0.8f;
-    bool outlineCircles = false; // whether to display the circles as outlined circles or filled disks
-    float physicsFrequency = 60.f; // Hz; the frequency with which the physics will be stepped
+    bool outlineCircles = true; // whether to display the circles as outlined circles or filled disks
+    float physicsFrequency = 30.f; // Hz; the frequency with which the physics will be stepped
     int correctionIterations = 4; // more -> better stability for objects resting on each other
     
     // Program arguments

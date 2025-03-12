@@ -180,27 +180,32 @@ void Renderer::intialize()
     glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
     glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
 
-    // Instance attributes
+    // Instance-attribute layout
     
-    // Position offset
+    // Position
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribDivisor(1, 1);
 
-    // Color
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(2 * sizeof(float)));
+    // Previous position
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(2);
     glVertexAttribDivisor(2, 1);
 
-    // Radius
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(5 * sizeof(float)));
+    // Color
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(4 * sizeof(float)));
     glEnableVertexAttribArray(3);
     glVertexAttribDivisor(3, 1);
 
-    // Outline width
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(6 * sizeof(float)));
+    // Radius
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(7 * sizeof(float)));
     glEnableVertexAttribArray(4);
     glVertexAttribDivisor(4, 1);
+
+    // Outline width
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(8 * sizeof(float)));
+    glEnableVertexAttribArray(5);
+    glVertexAttribDivisor(5, 1);
 
     // Unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -213,6 +218,7 @@ void Renderer::intialize()
     // Set uniforms
     m_projectionUniform = glGetUniformLocation(m_circleShaderProgram, "u_Projection");
     m_outlineCirclesUniform = glGetUniformLocation(m_circleShaderProgram, "u_OutlineCircles");
+    m_interpolationFactorUniform = glGetUniformLocation(m_circleShaderProgram, "u_InterpolationFactor");
 }
 
 void Renderer::run()
@@ -274,17 +280,27 @@ void Renderer::run()
 
         m_engine.setWorldBounds(scale * aspectRatio, scale);
 
+        bool worldUpdated = false;
+
         // Fixed time step physics updates
         while (accumulator >= fixedTimeStep)
         {
             m_engine.step(currentTime, fixedTimeStep);
             accumulator -= fixedTimeStep;
+            worldUpdated = true;
         }
 
-        // Update circle-instance buffer with new data
-        glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
-        glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // Calculate interpolation factor
+        const float interpolationFactor = accumulator / fixedTimeStep;
+
+        // Only update instance buffer when physics has been stepped or new circles added
+        if (worldUpdated)
+        {
+            // Update circle-instance buffer with new data
+            glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
+            glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
 
         // Apply shaders
         glUseProgram(m_circleShaderProgram);
@@ -292,6 +308,7 @@ void Renderer::run()
         // Set uniforms
         glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, projection);
         glUniform1i(m_outlineCirclesUniform, m_config.outlineCircles);
+        glUniform1f(m_interpolationFactorUniform, interpolationFactor);
 
         // Draw circles
         glBindVertexArray(m_vertexArray);

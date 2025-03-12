@@ -15,6 +15,9 @@ struct CircleRenderData
     // Position
     Vector2 position;
 
+    // Previous position for interpolation
+    Vector2 previousPosition;
+
     // Color
     float r = 0;
     float g = 0;

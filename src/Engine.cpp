@@ -9,6 +9,11 @@ void Engine::step(double simulationTime, double deltaTime)
 {
     spawnCircles(simulationTime);
 
+    for (int i = 0; i < m_circleCount; ++i)
+    {
+        m_circleRenderData[i].previousPosition = m_circleRenderData[i].position;
+    }
+
     // Update circle positions for animation
     for (int i = 0; i < m_circleCount; ++i)
     {
@@ -20,6 +25,9 @@ void Engine::step(double simulationTime, double deltaTime)
         {
             physicsData.velocity.y -= (float)(m_config.gravity * deltaTime);
         }
+
+        // For interpolation in shader
+        renderData.previousPosition = renderData.position;
 
         // Update position
         renderData.position += physicsData.velocity * deltaTime;
@@ -275,8 +283,11 @@ void Engine::spawnCircles(double simulationTime)
         // PI can be excluded since there are no real-world units in this engine
         const float mass = radius * radius * density;
 
+        const Vector2 position(spawnXDistribution(m_numberGenerator), spawnYDistribution(m_numberGenerator));
+
         m_circleRenderData.push_back({
-            Vector2(spawnXDistribution(m_numberGenerator), spawnYDistribution(m_numberGenerator)),
+            position,
+            position,
             colorDistribution(m_numberGenerator),
             colorDistribution(m_numberGenerator),
             colorDistribution(m_numberGenerator),

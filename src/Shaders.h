@@ -8,10 +8,11 @@ const char* vertexShaderSource = R"(
 #version 330 core
 
 layout (location = 0) in vec2 a_Vertex;
-layout (location = 1) in vec2 a_Offset;
-layout (location = 2) in vec3 a_Color;
-layout (location = 3) in float a_Radius;
-layout (location = 4) in float a_OutlineWidth;
+layout (location = 1) in vec2 a_CurrentPosition;
+layout (location = 2) in vec2 a_PreviousPosition;
+layout (location = 3) in vec3 a_Color;
+layout (location = 4) in float a_Radius;
+layout (location = 5) in float a_OutlineWidth;
 
 out vec2 v_Fragment;
 out vec3 v_Color;
@@ -19,10 +20,16 @@ out float v_Radius;
 out float v_OutlineWidth;
 
 uniform mat4 u_Projection;
+uniform float u_InterpolationFactor; // Alpha for interpolation
 
 void main()
 {
-    vec2 position = a_Offset + a_Vertex * a_Radius;
+    // Interpolate between previous and current positions
+    vec2 interpolatedPosition = mix(a_PreviousPosition, a_CurrentPosition, u_InterpolationFactor);
+    
+    // Apply vertex offset based on radius to create the circle
+    vec2 position = interpolatedPosition + a_Vertex * a_Radius;
+    
     gl_Position = u_Projection * vec4(position, 0.0, 1.0);
     v_Fragment = a_Vertex;
     v_Color = a_Color;

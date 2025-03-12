@@ -48,6 +48,7 @@ private:
     GLuint m_circleShaderProgram = 0;
     GLint m_projectionUniform = 0;
     GLint m_outlineCirclesUniform = 0;
+    GLint m_interpolationFactorUniform = 0;
 
     Engine& m_engine;
 
