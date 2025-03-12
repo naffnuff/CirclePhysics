@@ -49,7 +49,7 @@ private:
     {
         // Colliding pair
         CirclePhysicsData& first;
-        CirclePhysicsData* second; // nullable to represent collision against walls
+        CirclePhysicsData& second;
 
         // Collision normal
         Vector2 normal;
@@ -68,30 +68,30 @@ public:
         float initialAspectRatio = 0.f;
         float initialWindowHeight = 0.f;
         float spawnRate = 0.f;
+        float restitution = 0.f;
     };
 
     std::mt19937 m_numberGenerator;
 
-    std::uniform_real_distribution<float> colorDist;
-    std::uniform_real_distribution<float> radiusDist;
-    std::uniform_real_distribution<float> velDist; // Velocity for animation
+    std::uniform_real_distribution<float> colorDistribution;
+    std::uniform_real_distribution<float> radiusDistribution;
+    std::uniform_real_distribution<float> velocityDistribution;
 
-    //std::uniform_real_distribution<float> xPosDist(-initialAspectRatio * 0.9f, initialAspectRatio * 0.9f);
-    std::uniform_real_distribution<float> xPosDist;
-    //std::uniform_real_distribution<float> yPosDist(-0.9f, 0.9f);
-    std::uniform_real_distribution<float> yPosDist;
+    std::uniform_real_distribution<float> spawnXDistribution;
+    std::uniform_real_distribution<float> spawnYDistribution;
 
     Engine(const Config& config)
         : m_config(config)
     {
         m_numberGenerator = std::mt19937(std::random_device()());
 
-        colorDist = std::uniform_real_distribution<float>(0.0f, 1.0f);
-        radiusDist = std::uniform_real_distribution<float>(config.minRadius, config.maxRadius);
-        velDist = std::uniform_real_distribution<float>(-0.5f, 0.5f); // Velocity for animation
+        colorDistribution = std::uniform_real_distribution<float>(0.0f, 1.0f);
+        radiusDistribution = std::uniform_real_distribution<float>(config.minRadius, config.maxRadius);
+        velocityDistribution = std::uniform_real_distribution<float>(-1.0f, 1.0f);
 
-        xPosDist = std::uniform_real_distribution<float>(-m_config.initialAspectRatio * 0.9f, m_config.initialAspectRatio * 0.9f);
-        yPosDist = std::uniform_real_distribution<float>(-0.9f, 0.9f);
+        spawnXDistribution = std::uniform_real_distribution<float>(-m_config.initialAspectRatio * 0.9f, m_config.initialAspectRatio * 0.9f);
+        //spawnYDistribution = std::uniform_real_distribution<float>(-0.9f, 0.9f);
+        spawnYDistribution = std::uniform_real_distribution<float>(1.0f, 1.0f);
 
         m_circleRenderData.reserve(m_config.spawnLimit * 2);
         m_circlePhysicsData.reserve(m_config.spawnLimit * 2);
@@ -110,6 +110,7 @@ public:
 
     void spawnCircles(double simulationTime);
     void step(double simulationTime, double deltaTime);
+    void resolveWallCollisions();
     void detectCollisions();
     void resolveCollisions();
     void resolveCollision(const Collision& collision);

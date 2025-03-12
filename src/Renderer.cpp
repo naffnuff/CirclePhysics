@@ -234,14 +234,16 @@ void Renderer::run()
     // Main loop
     while (!glfwWindowShouldClose(m_window))
     {
-        // Calculate and report FPS
+        // Frame time
         double currentTime = glfwGetTime();
         double frameTime = currentTime - lastTime;
         lastTime = currentTime;
 
         // Cap the maximum frame time to avoid spiral of death
         if (frameTime > 0.25)
+        {
             frameTime = 0.25;
+        }
 
         // Accumulate time
         accumulator += frameTime;
@@ -257,7 +259,7 @@ void Renderer::run()
                     std::cout << "Circle count: " << circles.size() << std::endl;
                 });
             std::cout << "Average FPS: " << std::fixed << std::setprecision(1) << fps << std::endl;
-            std::cout << "Window size: " << m_windowWidth << "x" << m_windowHeight << std::endl;
+            std::cout << "Window size: " << (int)m_windowWidth << "x" << (int)m_windowHeight << std::endl;
             nbFrames = 0;
             lastReportTime = currentTime;
         }
