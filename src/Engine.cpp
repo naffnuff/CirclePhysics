@@ -18,7 +18,7 @@ void Engine::step(double simulationTime, double deltaTime)
         // Apply gravity
         if (physicsData.inverseMass > 0) // Don't apply to infinite mass objects
         {
-            physicsData.velocity.y -= m_config.gravity * deltaTime;
+            physicsData.velocity.y -= (float)(m_config.gravity * deltaTime);
         }
 
         // Update position
@@ -41,42 +41,32 @@ void Engine::resolveWallCollisions()
         if (circle.position.x - circle.radius < -m_worldBoundX) // Left wall
         {
             CirclePhysicsData& physics = m_circlePhysicsData[i];
-
             // Reflect the velocity
             physics.velocity.x = -physics.velocity.x * m_config.restitution;
-
             // Correct the position
             circle.position.x = -m_worldBoundX + circle.radius;
         }
         else if (circle.position.x + circle.radius > m_worldBoundX) // Right wall
         {
             CirclePhysicsData& physics = m_circlePhysicsData[i];
-
             // Reflect the velocity
             physics.velocity.x = -physics.velocity.x * m_config.restitution;
-
             // Correct the position
             circle.position.x = m_worldBoundX - circle.radius;
         }
         if (circle.position.y - circle.radius < -m_worldBoundY) // Floor
         {
-            // Save as a collision
             CirclePhysicsData& physics = m_circlePhysicsData[i];
-
             // Reflect the velocity
             physics.velocity.y = -physics.velocity.y * m_config.restitution;
-
             // Correct the position
             circle.position.y = -m_worldBoundY + circle.radius;
         }
         else if (circle.position.y + circle.radius > m_worldBoundY) // Ceiling
         {
-            // Save as a collision
             CirclePhysicsData& physics = m_circlePhysicsData[i];
-
             // Reflect the velocity
             physics.velocity.y = -physics.velocity.y * m_config.restitution;
-
             // Correct the position
             circle.position.y = m_worldBoundY - circle.radius;
         }
@@ -121,16 +111,30 @@ void Engine::resolveCollisions()
 {
     for (const Collision& collision : m_collisions)
     {
-        resolveCollision(collision);
+        correctVelocities(collision);
+    }
+
+    // Then apply position corrections in multiple iterations
+    for (int i = 0; i < m_config.correctionIterations; ++i)
+    {
+        if (i > 0)
+        {
+            detectCollisions();
+        }
+
+        for (const Collision& collision : m_collisions)
+        {
+            correctPositions(collision);
+        }
     }
 }
 
-void Engine::resolveCollision(const Collision& collision)
+void Engine::correctVelocities(const Collision& collision)
 {
     CirclePhysicsData& first = collision.first;
     CirclePhysicsData& second = collision.second;
 
-        // Compute relative velocity
+    // Compute relative velocity
     Vector2 relativeVelocity = second.velocity - first.velocity;
 
     // Compute the relative velocity along the collision normal
@@ -145,18 +149,117 @@ void Engine::resolveCollision(const Collision& collision)
     const float totalInverseMass = first.inverseMass + second.inverseMass;
     const float impulseMagnitude = -(1.0f + m_config.restitution) * velocityAlongNormal / totalInverseMass;
 
-    // Compute impulse vector
+    // Compute impulse vector (scaled by resolution factor)
     Vector2 impulse = collision.normal * impulseMagnitude;
 
     // Apply impulse to velocities
     first.velocity -= impulse * first.inverseMass;
     second.velocity += impulse * second.inverseMass;
+}
 
-    if (totalInverseMass > 0.f)
+void Engine::correctPositions(const Collision& collision)
+{
+    CirclePhysicsData& first = collision.first;
+    CirclePhysicsData& second = collision.second;
+
+    const float totalInverseMass = first.inverseMass + second.inverseMass;
+
+    Vector2 correction = collision.normal * (collision.penetration / totalInverseMass);
+
+    // The following is to ensure that the world boundaries are respected above all else
+
+    // Apply X correction respecting constraints
+    float xCorrection = correction.x;
+    if (xCorrection > 0.f)
     {
-        Vector2 correction = collision.normal * (collision.penetration / totalInverseMass);
-        first.renderData.position -= correction * first.inverseMass;
-        second.renderData.position += correction * second.inverseMass;
+        const float firstPositionX = first.renderData.position.x - xCorrection * first.inverseMass;
+        const float secondPositionX = second.renderData.position.x + xCorrection * second.inverseMass;
+
+        if (firstPositionX - first.renderData.radius < -m_worldBoundX)
+        {
+            // First object is constrained in negative X, put all correction on second
+            second.renderData.position.x += xCorrection * totalInverseMass;
+        }
+        else if (secondPositionX + second.renderData.radius > m_worldBoundX)
+        {
+            // Second object is constrained in positive X, put all correction on first
+            first.renderData.position.x -= xCorrection * totalInverseMass;
+        }
+        else
+        {
+            // Neither or both constrained, apply normal correction
+            first.renderData.position.x = firstPositionX;
+            second.renderData.position.x = secondPositionX;
+        }
+    }
+    else if (xCorrection < 0.f)
+    {
+        const float firstPositionX = first.renderData.position.x - xCorrection * first.inverseMass;
+        const float secondPositionX = second.renderData.position.x + xCorrection * second.inverseMass;
+
+        if (firstPositionX + first.renderData.radius > m_worldBoundX)
+        {
+            // First object is constrained in positive X, put all correction on second
+            second.renderData.position.x += xCorrection * totalInverseMass;
+        }
+        else if (secondPositionX - second.renderData.radius < -m_worldBoundX)
+        {
+            // Second object is constrained in negative X, put all correction on first
+            first.renderData.position.x -= xCorrection * totalInverseMass;
+        }
+        else
+        {
+            // Neither or both constrained, apply normal correction
+            first.renderData.position.x = firstPositionX;
+            second.renderData.position.x = secondPositionX;
+        }
+    }
+
+    // Apply Y correction respecting constraints
+    float yCorrection = correction.y;
+    if (yCorrection > 0.f)
+    {
+        const float firstPositionY = first.renderData.position.y - yCorrection * first.inverseMass;
+        const float secondPositionY = second.renderData.position.y + yCorrection * second.inverseMass;
+
+        if (firstPositionY - first.renderData.radius < -m_worldBoundY)
+        {
+            // First object is constrained in negative Y, put all correction on second
+            second.renderData.position.y += yCorrection * totalInverseMass;
+        }
+        else if (secondPositionY + second.renderData.radius > m_worldBoundY)
+        {
+            // Second object is constrained in positive Y, put all correction on first
+            first.renderData.position.y -= yCorrection * totalInverseMass;
+        }
+        else
+        {
+            // Neither or both constrained, apply normal correction
+            first.renderData.position.y = firstPositionY;
+            second.renderData.position.y = secondPositionY;
+        }
+    }
+    else if (yCorrection < 0.f)
+    {
+        const float firstPositionY = first.renderData.position.y - yCorrection * first.inverseMass;
+        const float secondPositionY = second.renderData.position.y + yCorrection * second.inverseMass;
+
+        if (firstPositionY + first.renderData.radius > m_worldBoundY)
+        {
+            // First object is constrained in positive Y, put all correction on second
+            second.renderData.position.y += yCorrection * totalInverseMass;
+        }
+        else if (secondPositionY - second.renderData.radius < -m_worldBoundY)
+        {
+            // Second object is constrained in negative Y, put all correction on first
+            first.renderData.position.y -= yCorrection * totalInverseMass;
+        }
+        else
+        {
+            // Neither or both constrained, apply normal correction
+            first.renderData.position.y = firstPositionY;
+            second.renderData.position.y = secondPositionY;
+        }
     }
 }
 
@@ -170,8 +273,7 @@ void Engine::spawnCircles(double simulationTime)
 
         const float density = 1.f;
         // PI can be excluded since there are no real-world units in this engine
-        //const float mass = radius * radius * density;
-        const float mass = radius * radius * radius * density;
+        const float mass = radius * radius * density;
 
         m_circleRenderData.push_back({
             Vector2(spawnXDistribution(m_numberGenerator), spawnYDistribution(m_numberGenerator)),

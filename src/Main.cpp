@@ -12,10 +12,11 @@ int main(int argc, char* argv[])
     float maxRadius = 100.f;
     int spawnLimit = 100;
     float gravity = 1.f; // intital world height / second^2
-    float spawnRate = 1.f; // per second
+    float spawnRate = 60.f; // per second
     float restitution = 0.8f;
-    bool outlineCircles = true; // whether to display the circles as outlined circles or filled disks
-    float physicsFrequency = 50.f; // Hz; the frequency with which the physics will be stepped
+    bool outlineCircles = false; // whether to display the circles as outlined circles or filled disks
+    float physicsFrequency = 60.f; // Hz; the frequency with which the physics will be stepped
+    int correctionIterations = 4; // more -> better stability for objects resting on each other
     
     // Program arguments
     if (argc > 1) initialWindowWidth = (float)std::atof(argv[1]);
@@ -28,6 +29,7 @@ int main(int argc, char* argv[])
     if (argc > 8) restitution = (float)std::atof(argv[8]);
     if (argc > 9) outlineCircles = (float)std::atoi(argv[9]);
     if (argc > 10) physicsFrequency = (float)std::atof(argv[10]);
+    if (argc > 11) correctionIterations = std::atoi(argv[11]);
 
     // Some basic validation
     initialWindowWidth = std::max(initialWindowWidth, 100.f);
@@ -44,6 +46,7 @@ int main(int argc, char* argv[])
     std::cout << "Outlined circles: " << outlineCircles << std::endl;
     std::cout << "Spawn rate: " << spawnRate << " circles / second" << std::endl;
     std::cout << "Physics-simulation frequency: " << physicsFrequency << " Hz" << std::endl;
+    std::cout << "Correction iterations: " << correctionIterations << std::endl;
 
     try
     {
@@ -53,10 +56,11 @@ int main(int argc, char* argv[])
             maxRadius / initialWindowHeight,
             spawnLimit,
             gravity,
+            restitution,
             initialWindowWidth / initialWindowHeight,
             initialWindowHeight,
             spawnRate,
-            restitution
+            correctionIterations
         });
 
         CirclePhysics::Renderer renderer({

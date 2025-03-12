@@ -65,10 +65,11 @@ public:
         float maxRadius = 0.f;
         int spawnLimit = 0;
         float gravity = 0.f;
+        float restitution = 0.f;
         float initialAspectRatio = 0.f;
         float initialWindowHeight = 0.f;
         float spawnRate = 0.f;
-        float restitution = 0.f;
+        int correctionIterations = 0;
     };
 
     std::mt19937 m_numberGenerator;
@@ -116,7 +117,8 @@ public:
     void resolveWallCollisions();
     void detectCollisions();
     void resolveCollisions();
-    void resolveCollision(const Collision& collision);
+    void correctVelocities(const Collision& collision);
+    void correctPositions(const Collision& collision);
     void spawnCircles(double simulationTime);
 
 private:
