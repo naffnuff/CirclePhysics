@@ -5,9 +5,9 @@
 #include <functional>
 
 #include "Vector2.h"
+#include "SpatialGrid.h"
 
 namespace CirclePhysics {
-
 
 // Struct for all the data that gets sent to the GPU
 struct CircleRenderData
@@ -30,7 +30,11 @@ struct CircleRenderData
     float outlineWidth = 0.f;
 };
 
-// class that drives the physics simulation
+// Driver of the 2D physics simulation.
+// Operates in a universe that is centered on Origo,
+// and initially stretches for (+-aspect ratio, +-1),
+// in all four directions, but can be expanded beyond that.
+// Aspect ratio = window width / window height.
 class Engine
 {
 private:
@@ -75,32 +79,41 @@ public:
         int correctionIterations = 0;
     };
 
-    std::mt19937 m_numberGenerator;
-
-    std::uniform_real_distribution<float> colorDistribution;
-    std::uniform_real_distribution<float> radiusDistribution;
-    std::uniform_real_distribution<float> velocityDistribution;
-
-    std::uniform_real_distribution<float> spawnXDistribution;
-    std::uniform_real_distribution<float> spawnYDistribution;
-
     Engine(const Config& config)
         : m_config(config)
+        // Same bounds as the world, in the same unit space.
+        // Max circle diameter as the cell size so that only surrounding cells need to be searched.
+        , m_spatialGrid(config.initialAspectRatio, 1.0f, config.maxRadius * 2.0f)
     {
         m_numberGenerator = std::mt19937(std::random_device()());
 
-        colorDistribution = std::uniform_real_distribution<float>(0.0f, 1.0f);
+        spawnXDistribution = std::uniform_real_distribution<float>(-config.initialAspectRatio * 0.9f, config.initialAspectRatio * 0.9f);
+        if (config.gravity > 0.f)
+        {
+            // Drop from ceiling so something happens
+            spawnYDistribution = std::uniform_real_distribution<float>(1.0f, 1.0f);
+        }
+        else
+        {
+            spawnYDistribution = std::uniform_real_distribution<float>(-0.9f, 0.9f);
+        }
+
+        colorDistribution = std::uniform_real_distribution<float>(0.4f, 1.f);
         radiusDistribution = std::uniform_real_distribution<float>(config.minRadius, config.maxRadius);
         velocityDistribution = std::uniform_real_distribution<float>(-1.0f, 1.0f);
 
-        spawnXDistribution = std::uniform_real_distribution<float>(-m_config.initialAspectRatio * 0.9f, m_config.initialAspectRatio * 0.9f);
-        //spawnYDistribution = std::uniform_real_distribution<float>(-0.9f, 0.9f);
-        spawnYDistribution = std::uniform_real_distribution<float>(1.0f, 1.0f);
-
-        m_circleRenderData.reserve(m_config.spawnLimit * 2);
-        m_circlePhysicsData.reserve(m_config.spawnLimit * 2);
+        // We might be really sad and confused at some point
+        // if these need to reallocate the storage of these two vectors.
+        // It is therefore important that the actual circle spawn count
+        // never exceeds the spawn limit.
+        m_circleRenderData.reserve(config.spawnLimit);
+        m_circlePhysicsData.reserve(config.spawnLimit);
     }
 
+    // Expand the world with new bounds.
+    // The world is always centered in Origo,
+    // so the bounds will be applied equally
+    // in all directions.
     void setWorldBounds(float worldBoundX, float worldBoundY)
     {
         m_worldBoundX = worldBoundX;
@@ -111,12 +124,16 @@ public:
     {
         return m_circleCount;
     }
+
     const CircleRenderData* getRenderData() const
     {
         return m_circleRenderData.data();
     }
 
+    // Take the next step in the physics simulation
     void step(double simulationTime, double deltaTime);
+
+private:
     void resolveWallCollisions();
     void detectCollisions();
     void resolveCollisions();
@@ -127,19 +144,37 @@ public:
 private:
     const Config m_config;
 
+    // Helpers for randomizing circles
+    std::mt19937 m_numberGenerator;
+    std::uniform_real_distribution<float> spawnXDistribution;
+    std::uniform_real_distribution<float> spawnYDistribution;
+    std::uniform_real_distribution<float> colorDistribution;
+    std::uniform_real_distribution<float> radiusDistribution;
+    std::uniform_real_distribution<float> velocityDistribution;
+
+    // 2D grid structure to help with the broad phase collision detection
+    SpatialGrid<int> m_spatialGrid;
+    // The result from the last use of the spatial grid
+    std::vector<std::pair<int, int>> m_potentialCollisionPairs;
+
     // We keep the circle data in two arrays to keep GPU data minimal
     std::vector<CircleRenderData> m_circleRenderData; // Here goes everyhting that gets sent to the GPU...
     std::vector<CirclePhysicsData> m_circlePhysicsData; //...and here goes the rest
 
+    // Temporary container for all collisions detected during the current step
     std::vector<Collision> m_collisions;
 
     // For the sake of cleanness, let's keep the common size of the arrays here
     int m_circleCount = 0;
 
+    // Initially in the range -aspect ratio..aspect ratio
     float m_worldBoundX = 0.f;
+    // Initially in the range -1..1
     float m_worldBoundY = 0.f;
 
-    float m_targetSpawnCount = 0.f;
+public:
+    // Should always be on in release builds
+    bool m_useSpatialPartitioning = true;
 };
 
 }

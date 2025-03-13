@@ -85,14 +85,27 @@ void Engine::detectCollisions()
 {
     m_collisions.clear();
 
-    // For all potential circle pairs
-    for (int i = 0; i < m_circleCount; ++i)
+    if (m_useSpatialPartitioning)
     {
-        CircleRenderData& first = m_circleRenderData[i];
+        // Clear the spatial grid and reinsert all circles
+        m_spatialGrid.updateDimensions(m_worldBoundX, m_worldBoundY);
+        m_spatialGrid.clear();
 
-        for (int j = i + 1; j < m_circleCount; ++j)
+        // Insert all circles into the grid
+        for (int i = 0; i < m_circleCount; ++i)
         {
-            CircleRenderData& second = m_circleRenderData[j];
+            CircleRenderData& circle = m_circleRenderData[i];
+            m_spatialGrid.insert(i, circle.position, circle.radius);
+        }
+
+        // Get all potential collision pairs from the grid
+        m_spatialGrid.getPotentialCollisions(m_potentialCollisionPairs);
+
+        // Check each potential pair for actual collision
+        for (const std::pair<int, int>& pair : m_potentialCollisionPairs)
+        {
+            CircleRenderData& first = m_circleRenderData[pair.first];
+            CircleRenderData& second = m_circleRenderData[pair.second];
 
             // Finer collision detection with squared numbers for efficiency
             const float radii = first.radius + second.radius;
@@ -105,11 +118,42 @@ void Engine::detectCollisions()
                 // Save as a collision
                 const float penetration = radii - difference.length();
                 m_collisions.push_back({
-                    m_circlePhysicsData[i],
-                    m_circlePhysicsData[j],
+                    m_circlePhysicsData[pair.first],
+                    m_circlePhysicsData[pair.second],
                     difference.normalized(),
                     penetration
                 });
+            }
+        }
+    }
+    else
+    {	
+        // For all potential circle pairs
+        for (int i = 0; i < m_circleCount; ++i)
+        {
+            CircleRenderData& first = m_circleRenderData[i];
+
+            for (int j = i + 1; j < m_circleCount; ++j)
+            {
+                CircleRenderData& second = m_circleRenderData[j];
+
+                // Finer collision detection with squared numbers for efficiency
+                const float radii = first.radius + second.radius;
+                const float radiiSquared = radii * radii;
+                const Vector2 difference = second.position - first.position;
+                const float distanceSquared = difference.lengthSquared();
+
+                if (distanceSquared < radiiSquared)
+                {
+                    // Save as a collision
+                    const float penetration = radii - difference.length();
+                    m_collisions.push_back({
+                        m_circlePhysicsData[i],
+                        m_circlePhysicsData[j],
+                        difference.normalized(),
+                        penetration
+                    });
+                }
             }
         }
     }

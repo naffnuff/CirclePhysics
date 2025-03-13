@@ -16,8 +16,9 @@ public:
     {
         float initialWindowWidth = 0.f;
         float initialWindowHeight = 0.f;
-        bool outlineCircles = true;
+        bool outlineCircles = false;
         float physicsFrequency = 0.f;
+        bool scalePhysics = false;
     };
 
     Renderer(const Config& config, Engine& engine)
@@ -35,11 +36,12 @@ public:
     void cleanUp();
 
 private:
-    const Config m_config;
+    Config m_config;
 
     // Global window dimensions that will be updated during resize
     float m_windowWidth = 0.f;
     float m_windowHeight = 0.f;
+
     GLFWwindow* m_window = nullptr;
     GLuint m_vertexArray = 0;
     GLuint m_vertexBuffer = 0;

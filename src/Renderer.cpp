@@ -226,18 +226,19 @@ void Renderer::run()
     // FPS calculation variables
     double lastTime = glfwGetTime();
     double lastReportTime = lastTime;
-    int nbFrames = 0;
-    double fps = 0.0;
+    int frameCount = 0;
+    int stepCount = 0;
+    double accumulatedStepTime = 0.0;
 
     // Fixed time step variables
-    const double fixedTimeStep = 1.0 / m_config.physicsFrequency;
+    double fixedTimeStep = 1.0 / m_config.physicsFrequency;
     double accumulator = 0.0;
 
     // Main loop
     while (!glfwWindowShouldClose(m_window))
     {
         // Frame time
-        double currentTime = glfwGetTime();
+        const double currentTime = glfwGetTime();
         double frameTime = currentTime - lastTime;
         lastTime = currentTime;
 
@@ -250,33 +251,10 @@ void Renderer::run()
         // Accumulate time
         accumulator += frameTime;
 
-        nbFrames++;
-
-        // Print FPS to stdout every second
-        if (currentTime - lastReportTime >= 1.0)
-        {
-            fps = static_cast<double>(nbFrames) / (currentTime - lastReportTime);
-            std::cout << "Circle count: " << m_engine.getCircleCount() << std::endl;
-            std::cout << "Average FPS: " << std::fixed << std::setprecision(1) << fps << std::endl;
-            std::cout << "Window size: " << (int)m_windowWidth << "x" << (int)m_windowHeight << std::endl;
-            nbFrames = 0;
-            lastReportTime = currentTime;
-        }
-
         float scale = m_windowHeight / m_config.initialWindowHeight;
 
         // Update projection matrix based on current window dimensions
-        float aspectRatio = m_windowWidth / m_windowHeight;
-        float projection[16] = {
-            1.0f / scale / aspectRatio, 0.0f,           0.0f, 0.0f,
-            0.0f,                       1.0f / scale,   0.0f, 0.0f,
-            0.0f,                       0.0f,           1.0f, 0.0f,
-            0.0f,                       0.0f,           0.0f, 1.0f
-        };
-
-        // Clear the screen
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        const float aspectRatio = m_windowWidth / m_windowHeight;
 
         m_engine.setWorldBounds(scale * aspectRatio, scale);
 
@@ -285,13 +263,51 @@ void Renderer::run()
         // Fixed time step physics updates
         while (accumulator >= fixedTimeStep)
         {
+            const double beforeStepTime = glfwGetTime();
             m_engine.step(currentTime, fixedTimeStep);
+            const float stepTime = glfwGetTime() - beforeStepTime;
+            if (m_config.scalePhysics && stepTime > fixedTimeStep)
+            {
+                // Draw down physics resolution to keep fps up
+                m_config.physicsFrequency -= 1;
+                fixedTimeStep = 1.0 / m_config.physicsFrequency;
+            }
+            accumulatedStepTime += stepTime;
+            ++stepCount;
             accumulator -= fixedTimeStep;
             worldUpdated = true;
         }
 
-        // Calculate interpolation factor
-        const float interpolationFactor = accumulator / fixedTimeStep;
+        ++frameCount;
+
+        // Print FPS to stdout every second
+        if (currentTime - lastReportTime >= 1.0)
+        {
+            const double fps = (double)frameCount / (currentTime - lastReportTime);
+            const double averageStepTime = accumulatedStepTime / stepCount;
+
+            std::cout << std::endl;
+            std::cout << "Window size: " << (int)m_windowWidth << "x" << (int)m_windowHeight << std::endl;
+            std::cout << "Circle count: " << m_engine.getCircleCount() << std::endl;
+            std::cout << "Average FPS: " << std::fixed << std::setprecision(1) << fps << std::endl;
+            std::cout << "Physics frequency: " << m_config.physicsFrequency << " Hz (" << fixedTimeStep * 1000.0 << " ms)" << std::endl;
+            if (stepCount > 0)
+            {
+                std::cout << "Average step time: " << std::fixed << std::setprecision(2) << averageStepTime * 1000.0 << " ms" << std::endl;
+            }
+            // Uncomment to compare performance of broad-phase methods (naive vs spatial partitioning)
+            //std::cout << "Spatial partitioning is " << (m_engine.m_useSpatialPartitioning ? "ON" : "OFF") << std::endl;
+            //m_engine.m_useSpatialPartitioning = !m_engine.m_useSpatialPartitioning;
+
+            frameCount = 0;
+            accumulatedStepTime = 0.0;
+            stepCount = 0;
+            lastReportTime = currentTime;
+        }
+
+        // Clear the screen
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
         // Only update instance buffer when physics has been stepped or new circles added
         if (worldUpdated)
@@ -304,6 +320,16 @@ void Renderer::run()
 
         // Apply shaders
         glUseProgram(m_circleShaderProgram);
+
+        const float projection[16] = {
+            1.0f / scale / aspectRatio, 0.0f,           0.0f, 0.0f,
+            0.0f,                       1.0f / scale,   0.0f, 0.0f,
+            0.0f,                       0.0f,           1.0f, 0.0f,
+            0.0f,                       0.0f,           0.0f, 1.0f
+        };
+
+        // Calculate interpolation factor
+        const float interpolationFactor = accumulator / fixedTimeStep;
 
         // Set uniforms
         glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, projection);

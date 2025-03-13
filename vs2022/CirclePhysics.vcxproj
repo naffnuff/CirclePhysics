@@ -22,6 +22,7 @@
     <ClInclude Include="..\src\Engine.h" />
     <ClInclude Include="..\src\Renderer.h" />
     <ClInclude Include="..\src\Shaders.h" />
+    <ClInclude Include="..\src\SpatialGrid.h" />
     <ClInclude Include="..\src\Vector2.h" />
   </ItemGroup>
   <ItemGroup>

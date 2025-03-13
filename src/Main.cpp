@@ -9,13 +9,14 @@ int main(int argc, char* argv[])
     float initialWindowWidth = 1024.f;
     float initialWindowHeight = 768.f;
     float minRadius = 5.f;
-    float maxRadius = 50.f;
-    int spawnLimit = 500;
-    float gravity = 1.f; // intital world height / second^2
-    float spawnRate = 1.f; // per second
+    float maxRadius = 5.f;
+    int spawnLimit = 20000;
+    float gravity = 0.f; // intital world height / second^2
+    float spawnRate = 0.f; // per second
     float restitution = 0.8f;
-    bool outlineCircles = true; // whether to display the circles as outlined circles or filled disks
-    float physicsFrequency = 30.f; // Hz; the frequency with which the physics will be stepped
+    bool outlineCircles = false; // whether to display the circles as outlined circles or filled disks
+    float physicsFrequency = 60.f; // Hz; the frequency with which the physics will be stepped
+    bool scalePhysics = true; // lower the physics frequency if the load is too intense?
     int correctionIterations = 4; // more -> better stability for objects resting on each other
     
     // Program arguments
@@ -29,7 +30,8 @@ int main(int argc, char* argv[])
     if (argc > 8) restitution = (float)std::atof(argv[8]);
     if (argc > 9) outlineCircles = (float)std::atoi(argv[9]);
     if (argc > 10) physicsFrequency = (float)std::atof(argv[10]);
-    if (argc > 11) correctionIterations = std::atoi(argv[11]);
+    if (argc > 11) scalePhysics = (float)std::atoi(argv[11]);
+    if (argc > 12) correctionIterations = std::atoi(argv[12]);
 
     // Some basic validation
     initialWindowWidth = std::max(initialWindowWidth, 100.f);
@@ -46,6 +48,7 @@ int main(int argc, char* argv[])
     std::cout << "Outlined circles: " << outlineCircles << std::endl;
     std::cout << "Spawn rate: " << spawnRate << " circles / second" << std::endl;
     std::cout << "Physics-simulation frequency: " << physicsFrequency << " Hz" << std::endl;
+    std::cout << "Scale physics: " << scalePhysics << std::endl;
     std::cout << "Correction iterations: " << correctionIterations << std::endl;
 
     try
@@ -67,7 +70,8 @@ int main(int argc, char* argv[])
             initialWindowWidth,
             initialWindowHeight,
             outlineCircles,
-            physicsFrequency
+            physicsFrequency,
+            scalePhysics
         }, engine);
 
         renderer.intialize();
