@@ -24,14 +24,15 @@ public:
     Renderer(const Config& config, Engine& engine)
         : m_config(config)
         , m_engine(engine)
-    { }
+    {
+    }
 
     ~Renderer()
     {
         cleanUp();
     }
 
-    void intialize();
+    void initialize();
     void run();
     void cleanUp();
 
@@ -43,10 +44,23 @@ private:
     float m_windowHeight = 0.f;
 
     GLFWwindow* m_window = nullptr;
+
+    // Base rendering buffers
     GLuint m_vertexArray = 0;
     GLuint m_vertexBuffer = 0;
     GLuint m_indexBuffer = 0;
-    GLuint m_instanceBuffer = 0;
+
+    // Attribute buffers
+    GLuint m_positionXBuffer = 0;
+    GLuint m_positionYBuffer = 0;
+    GLuint m_prevPositionXBuffer = 0;
+    GLuint m_prevPositionYBuffer = 0;
+    GLuint m_redBuffer = 0;
+    GLuint m_greenBuffer = 0;
+    GLuint m_blueBuffer = 0;
+    GLuint m_radiusBuffer = 0;
+    GLuint m_outlineWidthBuffer = 0;
+
     GLuint m_circleShaderProgram = 0;
     GLint m_projectionUniform = 0;
     GLint m_outlineCirclesUniform = 0;

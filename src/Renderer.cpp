@@ -87,7 +87,7 @@ GLuint createShaderProgram(const char* vertexSource, const char* fragmentSource)
     return program;
 }
 
-void Renderer::intialize()
+void Renderer::initialize()
 {
     // Initialize GLFW
     if (!glfwInit())
@@ -137,15 +137,15 @@ void Renderer::intialize()
     // Create and compile shaders
     m_circleShaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
-    // Quad vertices for a unit circle (actually a square that will be made circular in the fragment shader)
+    // Quad vertices for a unit circle
     float vertices[] = {
         -1.0f, -1.0f,
          1.0f, -1.0f,
          1.0f,  1.0f,
-        -1.0f,  1.0f 
+        -1.0f,  1.0f
     };
 
-    // Indices for drawing the quad as two triangles
+    // Indices for the quad
     unsigned int indices[] = {
         0, 1, 2,
         2, 3, 0
@@ -155,57 +155,101 @@ void Renderer::intialize()
     glGenVertexArrays(1, &m_vertexArray);
     glGenBuffers(1, &m_vertexBuffer);
     glGenBuffers(1, &m_indexBuffer);
-    glGenBuffers(1, &m_instanceBuffer);
+
+    // Create separate buffers for each attribute
+    glGenBuffers(1, &m_positionXBuffer);
+    glGenBuffers(1, &m_positionYBuffer);
+    glGenBuffers(1, &m_prevPositionXBuffer);
+    glGenBuffers(1, &m_prevPositionYBuffer);
+    glGenBuffers(1, &m_redBuffer);
+    glGenBuffers(1, &m_greenBuffer);
+    glGenBuffers(1, &m_blueBuffer);
+    glGenBuffers(1, &m_radiusBuffer);
+    glGenBuffers(1, &m_outlineWidthBuffer);
 
     // Bind vertex array
     glBindVertexArray(m_vertexArray);
 
-    // Static data
+    // Setup quad vertices and indices
 
-    // Setup buffer for the quad vertices
+    // Setup the interleaved position buffer for the base quad vertices
     glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Position attribute for base quad
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
 
     // Setup buffer for the triangle indices
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    // Instance data
+    // Setup buffers for instance attributes
 
-    // Position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
+    const CircleData& circleData = m_engine.getCircleData();
 
-    // Setup buffer for the circle instances
-    glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
-    glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
-
-    // Instance-attribute layout
-    
-    // Position
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)0);
+    // Current position X
+    glBindBuffer(GL_ARRAY_BUFFER, m_positionXBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.positionsX.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(1);
     glVertexAttribDivisor(1, 1);
 
-    // Previous position
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(2 * sizeof(float)));
+    // Current position Y
+    glBindBuffer(GL_ARRAY_BUFFER, m_positionYBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.positionsY.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(2);
     glVertexAttribDivisor(2, 1);
 
-    // Color
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(4 * sizeof(float)));
+    // Previous position X
+    glBindBuffer(GL_ARRAY_BUFFER, m_prevPositionXBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.previousPositionsX.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(3);
     glVertexAttribDivisor(3, 1);
 
-    // Radius
-    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(7 * sizeof(float)));
+    // Previous position Y
+    glBindBuffer(GL_ARRAY_BUFFER, m_prevPositionYBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.previousPositionsY.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(4);
     glVertexAttribDivisor(4, 1);
 
-    // Outline width
-    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(CircleRenderData), (void*)(8 * sizeof(float)));
+    // Red component
+    glBindBuffer(GL_ARRAY_BUFFER, m_redBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.r.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(5);
     glVertexAttribDivisor(5, 1);
+
+    // Green component
+    glBindBuffer(GL_ARRAY_BUFFER, m_greenBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.g.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(6);
+    glVertexAttribDivisor(6, 1);
+
+    // Blue component
+    glBindBuffer(GL_ARRAY_BUFFER, m_blueBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.b.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(7, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(7);
+    glVertexAttribDivisor(7, 1);
+
+    // Radius
+    glBindBuffer(GL_ARRAY_BUFFER, m_radiusBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.radii.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(8);
+    glVertexAttribDivisor(8, 1);
+
+    // Outline width
+    glBindBuffer(GL_ARRAY_BUFFER, m_outlineWidthBuffer);
+    glBufferData(GL_ARRAY_BUFFER, circleData.getCircleCount() * sizeof(float), circleData.outlineWidths.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(9, 1, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(9);
+    glVertexAttribDivisor(9, 1);
 
     // Unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -233,6 +277,8 @@ void Renderer::run()
     // Fixed time step variables
     double fixedTimeStep = 1.0 / m_config.physicsFrequency;
     double accumulator = 0.0;
+
+    int lastCircleCount = 0;
 
     // Main loop
     while (!glfwWindowShouldClose(m_window))
@@ -288,7 +334,7 @@ void Renderer::run()
 
             std::cout << std::endl;
             std::cout << "Window size: " << (int)m_windowWidth << "x" << (int)m_windowHeight << std::endl;
-            std::cout << "Circle count: " << m_engine.getCircleCount() << std::endl;
+            std::cout << "Circle count: " << m_engine.getCircleData().getCircleCount() << std::endl;
             std::cout << "Average FPS: " << std::fixed << std::setprecision(1) << fps << std::endl;
             std::cout << "Physics frequency: " << m_config.physicsFrequency << " Hz (" << fixedTimeStep * 1000.0 << " ms)" << std::endl;
             if (stepCount > 0)
@@ -309,12 +355,47 @@ void Renderer::run()
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Only update instance buffer when physics has been stepped or new circles added
+        const CircleData& circleData = m_engine.getCircleData();
+
+        // Only update instance buffers when physics has been updated
         if (worldUpdated)
         {
-            // Update circle-instance buffer with new data
-            glBindBuffer(GL_ARRAY_BUFFER, m_instanceBuffer);
-            glBufferData(GL_ARRAY_BUFFER, m_engine.getCircleCount() * sizeof(CircleRenderData), m_engine.getRenderData(), GL_DYNAMIC_DRAW);
+            int circleCount = circleData.getCircleCount();
+
+            // Update each attribute buffer with new data
+            glBindBuffer(GL_ARRAY_BUFFER, m_positionXBuffer);
+            glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.positionsX.data(), GL_DYNAMIC_DRAW);
+
+            glBindBuffer(GL_ARRAY_BUFFER, m_positionYBuffer);
+            glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.positionsY.data(), GL_DYNAMIC_DRAW);
+
+            glBindBuffer(GL_ARRAY_BUFFER, m_prevPositionXBuffer);
+            glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.previousPositionsX.data(), GL_DYNAMIC_DRAW);
+
+            glBindBuffer(GL_ARRAY_BUFFER, m_prevPositionYBuffer);
+            glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.previousPositionsY.data(), GL_DYNAMIC_DRAW);
+
+            // These attributes never change, so only if circles were added
+            if (circleCount != lastCircleCount)
+            {
+                glBindBuffer(GL_ARRAY_BUFFER, m_redBuffer);
+                glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.r.data(), GL_DYNAMIC_DRAW);
+
+                glBindBuffer(GL_ARRAY_BUFFER, m_greenBuffer);
+                glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.g.data(), GL_DYNAMIC_DRAW);
+
+                glBindBuffer(GL_ARRAY_BUFFER, m_blueBuffer);
+                glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.b.data(), GL_DYNAMIC_DRAW);
+
+                glBindBuffer(GL_ARRAY_BUFFER, m_radiusBuffer);
+                glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.radii.data(), GL_DYNAMIC_DRAW);
+
+                glBindBuffer(GL_ARRAY_BUFFER, m_outlineWidthBuffer);
+                glBufferData(GL_ARRAY_BUFFER, circleCount * sizeof(float), circleData.outlineWidths.data(), GL_DYNAMIC_DRAW);
+
+                lastCircleCount = circleCount;
+            }
+
             glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
 
@@ -338,7 +419,7 @@ void Renderer::run()
 
         // Draw circles
         glBindVertexArray(m_vertexArray);
-        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, m_engine.getCircleCount());
+        glDrawElementsInstanced(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0, circleData.getCircleCount());
         glBindVertexArray(0);
 
         // Swap buffers and poll events
@@ -350,26 +431,19 @@ void Renderer::run()
 
 void Renderer::cleanUp()
 {
-    if (m_vertexArray)
-    {
-        glDeleteVertexArrays(1, &m_vertexArray);
-    }
-    if (m_vertexBuffer)
-    {
-        glDeleteBuffers(1, &m_vertexBuffer);
-    }
-    if (m_indexBuffer)
-    {
-        glDeleteBuffers(1, &m_indexBuffer);
-    }
-    if (m_instanceBuffer)
-    {
-        glDeleteBuffers(1, &m_instanceBuffer);
-    }
-    if (m_circleShaderProgram)
-    {
-        glDeleteProgram(m_circleShaderProgram);
-    }
+    if (m_vertexArray) glDeleteVertexArrays(1, &m_vertexArray);
+    if (m_vertexBuffer) glDeleteBuffers(1, &m_vertexBuffer);
+    if (m_indexBuffer) glDeleteBuffers(1, &m_indexBuffer);
+    if (m_positionXBuffer) glDeleteBuffers(1, &m_positionXBuffer);
+    if (m_positionYBuffer) glDeleteBuffers(1, &m_positionYBuffer);
+    if (m_prevPositionXBuffer) glDeleteBuffers(1, &m_prevPositionXBuffer);
+    if (m_prevPositionYBuffer) glDeleteBuffers(1, &m_prevPositionYBuffer);
+    if (m_redBuffer) glDeleteBuffers(1, &m_redBuffer);
+    if (m_greenBuffer) glDeleteBuffers(1, &m_greenBuffer);
+    if (m_blueBuffer) glDeleteBuffers(1, &m_blueBuffer);
+    if (m_radiusBuffer) glDeleteBuffers(1, &m_radiusBuffer);
+    if (m_outlineWidthBuffer) glDeleteBuffers(1, &m_outlineWidthBuffer);
+    if (m_circleShaderProgram) glDeleteProgram(m_circleShaderProgram);
 }
 
 }

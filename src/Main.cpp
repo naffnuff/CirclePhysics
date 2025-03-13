@@ -9,9 +9,9 @@ int main(int argc, char* argv[])
     float initialWindowWidth = 1024.f;
     float initialWindowHeight = 768.f;
     float minRadius = 5.f;
-    float maxRadius = 5.f;
-    int spawnLimit = 20000;
-    float gravity = 0.f; // intital world height / second^2
+    float maxRadius = 50.f;
+    int spawnLimit = 100;
+    float gravity = 1.f; // intital world height / second^2
     float spawnRate = 0.f; // per second
     float restitution = 0.8f;
     bool outlineCircles = false; // whether to display the circles as outlined circles or filled disks
@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
             scalePhysics
         }, engine);
 
-        renderer.intialize();
+        renderer.initialize();
         renderer.run();
         renderer.cleanUp();
     }

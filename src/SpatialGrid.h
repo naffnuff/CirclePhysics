@@ -12,9 +12,9 @@ template <typename T>
 class SpatialGrid
 {
 public:
-    SpatialGrid(float worldBoundX, float worldBoundY, float cellSize)
-        : m_cellSize(cellSize)
+    SpatialGrid(float worldBoundX, float worldBoundY, float cellSizeHint)
     {
+        m_cellSize = std::max(cellSizeHint, 0.01f);
         updateDimensions(worldBoundX, worldBoundY);
     }
 
@@ -59,10 +59,10 @@ public:
         }
         else
         {
-            std::cerr << "World bounds: " << m_cellCountX << ":" << m_cellCountY << std::endl;
-            std::cerr << "Position: " << position.x << ":" << position.y << std::endl;
-            std::cerr << "Cell coords: " << cellX << ":" << cellY << std::endl;
-            throw std::runtime_error("Nope");
+            //std::cerr << "World bounds: " << m_cellCountX << ":" << m_cellCountY << std::endl;
+            //std::cerr << "Position: " << position.x << ":" << position.y << std::endl;
+            //std::cerr << "Cell coords: " << cellX << ":" << cellY << std::endl;
+            //throw std::runtime_error("Nope");
         }
     }
 

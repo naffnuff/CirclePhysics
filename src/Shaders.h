@@ -3,16 +3,19 @@
 namespace CirclePhysics
 {
 
-// Shader sources
 const char* vertexShaderSource = R"(
 #version 330 core
 
-layout (location = 0) in vec2 a_Vertex;
-layout (location = 1) in vec2 a_CurrentPosition;
-layout (location = 2) in vec2 a_PreviousPosition;
-layout (location = 3) in vec3 a_Color;
-layout (location = 4) in float a_Radius;
-layout (location = 5) in float a_OutlineWidth;
+layout (location = 0) in vec2 a_Vertex;          // Base quad vertex
+layout (location = 1) in float a_PositionX;      // Current position X
+layout (location = 2) in float a_PositionY;      // Current position Y
+layout (location = 3) in float a_PrevPositionX;  // Previous position X
+layout (location = 4) in float a_PrevPositionY;  // Previous position Y
+layout (location = 5) in float a_Red;            // Red component
+layout (location = 6) in float a_Green;          // Green component
+layout (location = 7) in float a_Blue;           // Blue component
+layout (location = 8) in float a_Radius;         // Radius
+layout (location = 9) in float a_OutlineWidth;   // Outline width
 
 out vec2 v_Fragment;
 out vec3 v_Color;
@@ -24,15 +27,18 @@ uniform float u_InterpolationFactor; // Alpha for interpolation
 
 void main()
 {
+    vec2 currentPosition = vec2(a_PositionX, a_PositionY);
+    vec2 previousPosition = vec2(a_PrevPositionX, a_PrevPositionY);
+    
     // Interpolate between previous and current positions
-    vec2 interpolatedPosition = mix(a_PreviousPosition, a_CurrentPosition, u_InterpolationFactor);
+    vec2 interpolatedPosition = mix(previousPosition, currentPosition, u_InterpolationFactor);
     
     // Apply vertex offset based on radius to create the circle
     vec2 position = interpolatedPosition + a_Vertex * a_Radius;
     
     gl_Position = u_Projection * vec4(position, 0.0, 1.0);
     v_Fragment = a_Vertex;
-    v_Color = a_Color;
+    v_Color = vec3(a_Red, a_Green, a_Blue);
     v_Radius = a_Radius;
     v_OutlineWidth = a_OutlineWidth;
 }

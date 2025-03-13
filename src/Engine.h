@@ -7,64 +7,124 @@
 #include "Vector2.h"
 #include "SpatialGrid.h"
 
-namespace CirclePhysics {
-
-// Struct for all the data that gets sent to the GPU
-struct CircleRenderData
+namespace CirclePhysics
 {
-    // Position
-    Vector2 position;
 
-    // Previous position for interpolation
-    Vector2 previousPosition;
+// Cache-friendly SoA structure for the circle data
+struct CircleData
+{
+    // Position data
+    std::vector<float> positionsX;          // All X positions
+    std::vector<float> positionsY;          // All Y positions
+    std::vector<float> previousPositionsX;  // All previous X positions
+    std::vector<float> previousPositionsY;  // All previous Y positions
 
-    // Color
-    float r = 0;
-    float g = 0;
-    float b = 0;
+    // Physics data
+    std::vector<float> velocitiesX;         // All X velocities
+    std::vector<float> velocitiesY;         // All Y velocities
+    std::vector<float> inverseMasses;       // All inverse masses
 
-    // Radius
-    float radius = 0.f;
+    // Rendering data
+    std::vector<float> radii;               // All radii
+    std::vector<float> r;                   // All red components
+    std::vector<float> g;                   // All green components
+    std::vector<float> b;                   // All blue components
+    std::vector<float> outlineWidths;       // All outline widths
 
-    // The width of the strokes that outline the circle 
-    float outlineWidth = 0.f;
+    // Helper methods
+    inline Vector2 getPosition(int index) const
+    {
+        return Vector2(positionsX[index], positionsY[index]);
+    }
+
+    inline void setPosition(int index, const Vector2& pos)
+    {
+        positionsX[index] = pos.x;
+        positionsY[index] = pos.y;
+    }
+
+    inline Vector2 getVelocity(int index) const
+    {
+        return Vector2(velocitiesX[index], velocitiesY[index]);
+    }
+
+    inline void setVelocity(int index, const Vector2& vel)
+    {
+        velocitiesX[index] = vel.x;
+        velocitiesY[index] = vel.y;
+    }
+
+    // Reserve space for a specified number of elements
+    void reserve(size_t size)
+    {
+        positionsX.reserve(size);
+        positionsY.reserve(size);
+        previousPositionsX.reserve(size);
+        previousPositionsY.reserve(size);
+        velocitiesX.reserve(size);
+        velocitiesY.reserve(size);
+        inverseMasses.reserve(size);
+        radii.reserve(size);
+        r.reserve(size);
+        g.reserve(size);
+        b.reserve(size);
+        outlineWidths.reserve(size);
+    }
+
+    // Add a new circle
+    void addCircle(
+        const Vector2& position,
+        const Vector2& velocity,
+        float inverseMass,
+        float radius,
+        float red,
+        float green,
+        float blue,
+        float outlineWidth
+    )
+    {
+        positionsX.push_back(position.x);
+        positionsY.push_back(position.y);
+        previousPositionsX.push_back(position.x);
+        previousPositionsY.push_back(position.y);
+        velocitiesX.push_back(velocity.x);
+        velocitiesY.push_back(velocity.y);
+        inverseMasses.push_back(inverseMass);
+        radii.push_back(radius);
+        r.push_back(red);
+        g.push_back(green);
+        b.push_back(blue);
+        outlineWidths.push_back(outlineWidth);
+
+        ++m_circleCount;
+    }
+
+    int getCircleCount() const
+    {
+        return m_circleCount;
+    }
+
+private:
+    // For the sake of cleanness, let's keep the common size of all the circle-data arrays here
+    int m_circleCount = 0;
+};
+
+struct Collision
+{
+    // Indices of the two colliding circles
+    int firstIndex;
+    int secondIndex;
+
+    // Collision normal
+    Vector2 normal;
+
+    // How much closer are the objects than their radii allow?
+    float penetration = 0.f;
 };
 
 // Driver of the 2D physics simulation.
-// Operates in a universe that is centered on Origo,
-// and initially stretches for (+-aspect ratio, +-1),
-// in all four directions, but can be expanded beyond that.
-// Aspect ratio = window width / window height.
 class Engine
 {
-private:
-    // Struct for data that doesn't get sent to the GPU
-    struct CirclePhysicsData
-    {
-        // Velocity
-        Vector2 velocity;
-
-        // 1 / object mass
-        // 0.f is a valid value, it means the object has infinite mass and cannot be moved by other objects
-        float inverseMass = 0.f;
-
-        // The render data representing the same circle
-        CircleRenderData& renderData;
-    };
-
-    struct Collision
-    {
-        // Colliding pair
-        CirclePhysicsData& first;
-        CirclePhysicsData& second;
-
-        // Collision normal
-        Vector2 normal;
-
-        // How much closer are the objects than their radii allow?
-        float penetration = 0.f;
-    };
-
 public:
     struct Config
     {
@@ -79,55 +139,14 @@ public:
         int correctionIterations = 0;
     };
 
-    Engine(const Config& config)
-        : m_config(config)
-        // Same bounds as the world, in the same unit space.
-        // Max circle diameter as the cell size so that only surrounding cells need to be searched.
-        , m_spatialGrid(config.initialAspectRatio, 1.0f, config.maxRadius * 2.0f)
+    Engine(const Config& config);
+
+    // Expand the world with new bounds
+    void setWorldBounds(float worldBoundX, float worldBoundY);
+
+    const CircleData& getCircleData()
     {
-        m_numberGenerator = std::mt19937(std::random_device()());
-
-        spawnXDistribution = std::uniform_real_distribution<float>(-config.initialAspectRatio * 0.9f, config.initialAspectRatio * 0.9f);
-        if (config.gravity > 0.f)
-        {
-            // Drop from ceiling so something happens
-            spawnYDistribution = std::uniform_real_distribution<float>(1.0f, 1.0f);
-        }
-        else
-        {
-            spawnYDistribution = std::uniform_real_distribution<float>(-0.9f, 0.9f);
-        }
-
-        colorDistribution = std::uniform_real_distribution<float>(0.4f, 1.f);
-        radiusDistribution = std::uniform_real_distribution<float>(config.minRadius, config.maxRadius);
-        velocityDistribution = std::uniform_real_distribution<float>(-1.0f, 1.0f);
-
-        // We might be really sad and confused at some point
-        // if these need to reallocate the storage of these two vectors.
-        // It is therefore important that the actual circle spawn count
-        // never exceeds the spawn limit.
-        m_circleRenderData.reserve(config.spawnLimit);
-        m_circlePhysicsData.reserve(config.spawnLimit);
-    }
-
-    // Expand the world with new bounds.
-    // The world is always centered in Origo,
-    // so the bounds will be applied equally
-    // in all directions.
-    void setWorldBounds(float worldBoundX, float worldBoundY)
-    {
-        m_worldBoundX = worldBoundX;
-        m_worldBoundY = worldBoundY;
-    }
-
-    int getCircleCount() const
-    {
-        return m_circleCount;
-    }
-
-    const CircleRenderData* getRenderData() const
-    {
-        return m_circleRenderData.data();
+        return m_circleData;
     }
 
     // Take the next step in the physics simulation
@@ -152,28 +171,23 @@ private:
     std::uniform_real_distribution<float> radiusDistribution;
     std::uniform_real_distribution<float> velocityDistribution;
 
+    // SoA circle data structure
+    CircleData m_circleData;
+
     // 2D grid structure to help with the broad phase collision detection
     SpatialGrid<int> m_spatialGrid;
+
     // The result from the last use of the spatial grid
     std::vector<std::pair<int, int>> m_potentialCollisionPairs;
-
-    // We keep the circle data in two arrays to keep GPU data minimal
-    std::vector<CircleRenderData> m_circleRenderData; // Here goes everyhting that gets sent to the GPU...
-    std::vector<CirclePhysicsData> m_circlePhysicsData; //...and here goes the rest
 
     // Temporary container for all collisions detected during the current step
     std::vector<Collision> m_collisions;
 
-    // For the sake of cleanness, let's keep the common size of the arrays here
-    int m_circleCount = 0;
-
-    // Initially in the range -aspect ratio..aspect ratio
+    // World bounds
     float m_worldBoundX = 0.f;
-    // Initially in the range -1..1
     float m_worldBoundY = 0.f;
 
 public:
-    // Should always be on in release builds
     bool m_useSpatialPartitioning = true;
 };
 
