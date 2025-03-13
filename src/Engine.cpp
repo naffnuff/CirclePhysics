@@ -29,8 +29,47 @@ Engine::Engine(const Config& config)
     radiusDistribution = std::uniform_real_distribution<float>(config.minRadius, config.maxRadius);
     velocityDistribution = std::uniform_real_distribution<float>(-1.0f, 1.0f);
 
+    // Determine number of threads (leave one core for main thread)
+    int numThreads = std::max(1, static_cast<int>(std::thread::hardware_concurrency()) - 1);
+
+    // Initialize per-thread collision vectors
+    m_collisions.resize(numThreads);
+    for (std::vector<Collision>& collisions : m_collisions)
+    {
+        collisions.reserve(config.spawnLimit);
+    }
+
+    // Start the worker threads
+    for (int i = 0; i < numThreads; ++i)
+    {
+        m_threadPool.emplace_back(&Engine::workerThread, this, i);
+    }
+
+    std::cout << numThreads << " helper threads supported" << std::endl;
+
     // Reserve space for all circles
     m_circleData.reserve(config.spawnLimit);
+}
+
+Engine::~Engine()
+{
+    // Signal all threads to exit
+    {
+        std::unique_lock<std::mutex> lock(m_queueMutex);
+        m_terminateThreads = true;
+    }
+
+    // Wake up all threads
+    m_condition.notify_all();
+
+    // Wait for all threads to finish
+    for (auto& thread : m_threadPool)
+    {
+        if (thread.joinable())
+        {
+            thread.join();
+        }
+    }
 }
 
 void Engine::setWorldBounds(float worldBoundX, float worldBoundY)
@@ -39,7 +78,7 @@ void Engine::setWorldBounds(float worldBoundX, float worldBoundY)
     m_worldBoundY = worldBoundY;
 }
 
-void Engine::step(double simulationTime, double deltaTime)
+int Engine::step(double simulationTime, double deltaTime)
 {
     spawnCircles(simulationTime);
 
@@ -66,7 +105,10 @@ void Engine::step(double simulationTime, double deltaTime)
 
     resolveWallCollisions();
     detectCollisions();
+    const int collisionChecks = m_potentialCollisionPairs.size();
     resolveCollisions();
+
+    return (int)collisionChecks;
 }
 
 void Engine::resolveWallCollisions()
@@ -112,11 +154,15 @@ void Engine::resolveWallCollisions()
 
 void Engine::detectCollisions()
 {
-    m_collisions.clear();
+    // Clear collision vectors
+    for (std::vector<Collision>& collisions : m_collisions)
+    {
+        collisions.clear();
+    }
 
     if (m_useSpatialPartitioning)
     {
-        // Clear the spatial grid and reinsert all circles
+        // Clear and update spatial grid
         m_spatialGrid.updateDimensions(m_worldBoundX, m_worldBoundY);
         m_spatialGrid.clear();
 
@@ -127,36 +173,64 @@ void Engine::detectCollisions()
             m_spatialGrid.insert(i, position, m_circleData.radii[i]);
         }
 
-        // Get all potential collision pairs from the grid
+        // Get potential collisions
         m_spatialGrid.getPotentialCollisions(m_potentialCollisionPairs);
 
-        // Check each potential pair for actual collision
-        for (const std::pair<int, int>& pair : m_potentialCollisionPairs)
+        // Up to a certain point, not worth the threading overhead
+        if (m_singleThreaded || m_potentialCollisionPairs.size() < 5000)
         {
-            const int i = pair.first;
-            const int j = pair.second;
-
-            // Get positions and radii
-            const Vector2 firstPosition(m_circleData.positionsX[i], m_circleData.positionsY[i]);
-            const Vector2 secondPosition(m_circleData.positionsX[j], m_circleData.positionsY[j]);
-            const float firstRadius = m_circleData.radii[i];
-            const float secondRadius = m_circleData.radii[j];
-
-            // Finer collision detection with squared numbers for efficiency
-            const float radii = firstRadius + secondRadius;
-            const float radiiSquared = radii * radii;
-            const Vector2 difference = secondPosition - firstPosition;
-            const float distanceSquared = difference.lengthSquared();
-
-            if (distanceSquared < radiiSquared)
+            // Use sequential approach
+            for (const std::pair<int, int>& pair : m_potentialCollisionPairs)
             {
-                // Save as a collision
-                const float penetration = radii - difference.length();
-                m_collisions.push_back({
-                    i, j,
-                    difference.normalized(),
-                    penetration
-                });
+                checkPotentialCollisionPair(pair.first, pair.second, m_collisions[0]);
+            }
+        }
+        else
+        {
+            // Number of worker threads in our pool
+            int numThreads = m_threadPool.size();
+
+            // Calculate work division
+            int totalPairs = m_potentialCollisionPairs.size();
+            int pairsPerThread = (totalPairs + numThreads - 1) / numThreads;
+
+            // Reset active threads counter
+            m_activeThreads = 0;
+
+            // Submit tasks to work queue
+            {
+                std::unique_lock<std::mutex> lock(m_queueMutex);
+
+                for (int threadId = 0; threadId < numThreads; ++threadId)
+                {
+                    int startIdx = threadId * pairsPerThread;
+                    int endIdx = std::min((threadId + 1) * pairsPerThread, totalPairs);
+
+                    if (startIdx >= endIdx) break;
+
+                    // Create a task to process this batch
+                    m_workQueue.push(
+                        [this, threadId, startIdx, endIdx]()
+                        {
+                            std::vector<Collision>& localCollisions = m_collisions[threadId];
+
+                            for (int i = startIdx; i < endIdx; ++i)
+                            {
+                                const std::pair<int, int>& pair = m_potentialCollisionPairs[i];
+
+                                checkPotentialCollisionPair(pair.first, pair.second, localCollisions);
+                            }
+                        });
+                }
+            }
+
+            // Notify worker threads
+            m_condition.notify_all();
+
+            // Wait for all tasks to complete
+            while (m_activeThreads > 0 || !m_workQueue.empty())
+            {
+                std::this_thread::yield();
             }
         }
     }
@@ -173,32 +247,51 @@ void Engine::detectCollisions()
                 const Vector2 secondPosition(m_circleData.positionsX[j], m_circleData.positionsY[j]);
                 const float secondRadius = m_circleData.radii[j];
 
-                // Finer collision detection with squared numbers for efficiency
-                const float radii = firstRadius + secondRadius;
-                const float radiiSquared = radii * radii;
-                const Vector2 difference = secondPosition - firstPosition;
-                const float distanceSquared = difference.lengthSquared();
-
-                if (distanceSquared < radiiSquared)
-                {
-                    // Save as a collision
-                    const float penetration = radii - difference.length();
-                    m_collisions.push_back({
-                        i, j,
-                        difference.normalized(),
-                        penetration
-                    });
-                }
+                checkCollision(i, j, firstPosition, secondPosition, firstRadius, secondRadius, m_collisions[0]);
             }
         }
     }
 }
 
+void Engine::checkPotentialCollisionPair(int i, int j, std::vector<Collision>& result) const
+{
+    // Get positions and radii
+    const Vector2 firstPosition(m_circleData.positionsX[i], m_circleData.positionsY[i]);
+    const Vector2 secondPosition(m_circleData.positionsX[j], m_circleData.positionsY[j]);
+    const float firstRadius = m_circleData.radii[i];
+    const float secondRadius = m_circleData.radii[j];
+
+    checkCollision(i, j, firstPosition, secondPosition, firstRadius, secondRadius, result);
+}
+
+void Engine::checkCollision(int i, int j, Vector2 firstPosition, Vector2 secondPosition, float firstRadius, float secondRadius, std::vector<Collision>& result) const
+{
+    // Finer collision detection with squared numbers for efficiency
+    const float radii = firstRadius + secondRadius;
+    const float radiiSquared = radii * radii;
+    const Vector2 difference = secondPosition - firstPosition;
+    const float distanceSquared = difference.lengthSquared();
+
+    if (distanceSquared < radiiSquared)
+    {
+        // Save as a collision
+        const float penetration = radii - difference.length();
+        result.push_back({
+            i, j,
+            difference.normalized(),
+            penetration
+        });
+    }
+}
+
 void Engine::resolveCollisions()
 {
-    for (const Collision& collision : m_collisions)
+    for (const std::vector<Collision>& collisions : m_collisions)
     {
-        correctVelocities(collision);
+        for (const Collision& collision : collisions)
+        {
+            correctVelocities(collision);
+        }
     }
 
     // Then apply position corrections in multiple iterations
@@ -209,9 +302,12 @@ void Engine::resolveCollisions()
             detectCollisions();
         }
 
-        for (const Collision& collision : m_collisions)
+        for (const std::vector<Collision>& collisions : m_collisions)
         {
-            correctPositions(collision);
+            for (const Collision& collision : collisions)
+            {
+                correctPositions(collision);
+            }
         }
     }
 }
@@ -398,6 +494,40 @@ void Engine::spawnCircles(double simulationTime)
             colorDistribution(m_numberGenerator),
             2.f / radius / m_config.initialWindowHeight
         );
+    }
+}
+
+void Engine::workerThread(int threadId)
+{
+    while (true)
+    {
+        std::function<void()> task;
+
+        {
+            std::unique_lock<std::mutex> lock(m_queueMutex);
+
+            // Wait for work or termination signal
+            m_condition.wait(lock,
+                [this]()
+                {
+                    return !m_workQueue.empty() || m_terminateThreads;
+                });
+
+            // Check if we should exit
+            if (m_terminateThreads && m_workQueue.empty())
+            {
+                return;
+            }
+
+            // Get next task
+            task = std::move(m_workQueue.front());
+            m_workQueue.pop();
+        }
+
+        // Execute the task
+        m_activeThreads++;
+        task();
+        m_activeThreads--;
     }
 }
 

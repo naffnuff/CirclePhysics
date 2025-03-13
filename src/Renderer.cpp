@@ -275,10 +275,13 @@ void Renderer::run()
     double accumulatedStepTime = 0.0;
 
     // Fixed time step variables
-    double fixedTimeStep = 1.0 / m_config.physicsFrequency;
+    actualPhysicsFrequency = m_config.physicsFrequency;
+    double fixedTimeStep = 1.0 / actualPhysicsFrequency;
     double accumulator = 0.0;
 
     int lastCircleCount = 0;
+
+    int accumulatedCollisionChecks = 0;
 
     // Main loop
     while (!glfwWindowShouldClose(m_window))
@@ -310,13 +313,21 @@ void Renderer::run()
         while (accumulator >= fixedTimeStep)
         {
             const double beforeStepTime = glfwGetTime();
-            m_engine.step(currentTime, fixedTimeStep);
+            accumulatedCollisionChecks += m_engine.step(currentTime, fixedTimeStep);
             const float stepTime = glfwGetTime() - beforeStepTime;
-            if (m_config.scalePhysics && stepTime > fixedTimeStep)
+            if (m_config.scalePhysics)
             {
-                // Draw down physics resolution to keep fps up
-                m_config.physicsFrequency -= 1;
-                fixedTimeStep = 1.0 / m_config.physicsFrequency;
+                if (actualPhysicsFrequency > 10.0 && stepTime > fixedTimeStep)
+                {
+                    // Draw down physics resolution to keep fps up
+                    actualPhysicsFrequency -= 1.0;
+                    fixedTimeStep = 1.0 / actualPhysicsFrequency;
+                }
+                else if (actualPhysicsFrequency < m_config.physicsFrequency && stepTime < fixedTimeStep / 2.f)
+                {
+                    actualPhysicsFrequency += 1.0;
+                    fixedTimeStep = 1.0 / actualPhysicsFrequency;
+                }
             }
             accumulatedStepTime += stepTime;
             ++stepCount;
@@ -331,22 +342,26 @@ void Renderer::run()
         {
             const double fps = (double)frameCount / (currentTime - lastReportTime);
             const double averageStepTime = accumulatedStepTime / stepCount;
+            const int averageCollisionChecks = accumulatedCollisionChecks / stepCount;
 
             std::cout << std::endl;
-            std::cout << "Window size: " << (int)m_windowWidth << "x" << (int)m_windowHeight << std::endl;
             std::cout << "Circle count: " << m_engine.getCircleData().getCircleCount() << std::endl;
             std::cout << "Average FPS: " << std::fixed << std::setprecision(1) << fps << std::endl;
-            std::cout << "Physics frequency: " << m_config.physicsFrequency << " Hz (" << fixedTimeStep * 1000.0 << " ms)" << std::endl;
+            std::cout << "Physics frequency: " << actualPhysicsFrequency << " Hz (" << fixedTimeStep * 1000.0 << " ms)" << std::endl;
             if (stepCount > 0)
             {
                 std::cout << "Average step time: " << std::fixed << std::setprecision(2) << averageStepTime * 1000.0 << " ms" << std::endl;
+                std::cout << "Average collision checks: " << averageCollisionChecks << std::endl;
             }
-            // Uncomment to compare performance of broad-phase methods (naive vs spatial partitioning)
+            // Uncomment to compare performance of features
             //std::cout << "Spatial partitioning is " << (m_engine.m_useSpatialPartitioning ? "ON" : "OFF") << std::endl;
             //m_engine.m_useSpatialPartitioning = !m_engine.m_useSpatialPartitioning;
+            //std::cout << (m_engine.m_singleThreaded ? "Single" : "Multi") << "-threaded" << std::endl;
+            //m_engine.m_singleThreaded = !m_engine.m_singleThreaded;
 
             frameCount = 0;
             accumulatedStepTime = 0.0;
+            accumulatedCollisionChecks = 0;
             stepCount = 0;
             lastReportTime = currentTime;
         }

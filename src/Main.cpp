@@ -8,14 +8,14 @@ int main(int argc, char* argv[])
     // Default values
     float initialWindowWidth = 1024.f;
     float initialWindowHeight = 768.f;
-    float minRadius = 5.f;
+    float minRadius = 1.f;
     float maxRadius = 50.f;
-    int spawnLimit = 100;
+    int spawnLimit = 100000;
     float gravity = 1.f; // intital world height / second^2
-    float spawnRate = 0.f; // per second
+    float spawnRate = 1.f; // per second
     float restitution = 0.8f;
     bool outlineCircles = false; // whether to display the circles as outlined circles or filled disks
-    float physicsFrequency = 60.f; // Hz; the frequency with which the physics will be stepped
+    double physicsFrequency = 60.0; // Hz; the frequency with which the physics will be stepped
     bool scalePhysics = true; // lower the physics frequency if the load is too intense?
     int correctionIterations = 4; // more -> better stability for objects resting on each other
     
@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     if (argc > 7) spawnRate = (float)std::atof(argv[7]);
     if (argc > 8) restitution = (float)std::atof(argv[8]);
     if (argc > 9) outlineCircles = (float)std::atoi(argv[9]);
-    if (argc > 10) physicsFrequency = (float)std::atof(argv[10]);
+    if (argc > 10) physicsFrequency = std::atof(argv[10]);
     if (argc > 11) scalePhysics = (float)std::atoi(argv[11]);
     if (argc > 12) correctionIterations = std::atoi(argv[12]);
 
@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
     initialWindowWidth = std::max(initialWindowWidth, 100.f);
     initialWindowHeight = std::max(initialWindowHeight, 100.f);
     maxRadius = std::max(minRadius, maxRadius);
-    physicsFrequency = std::max(physicsFrequency, 0.f);
+    physicsFrequency = std::max(physicsFrequency, 0.0);
     
     std::cout << "Starting simulation with:" << std::endl;
     std::cout << "Window size: " << (int)initialWindowWidth << "x" << (int)initialWindowHeight << std::endl;

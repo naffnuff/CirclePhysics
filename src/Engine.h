@@ -3,6 +3,9 @@
 #include <vector>
 #include <random>
 #include <functional>
+#include <thread>
+#include <mutex>
+#include <queue>
 
 #include "Vector2.h"
 #include "SpatialGrid.h"
@@ -140,6 +143,7 @@ public:
     };
 
     Engine(const Config& config);
+    ~Engine();
 
     // Expand the world with new bounds
     void setWorldBounds(float worldBoundX, float worldBoundY);
@@ -150,15 +154,20 @@ public:
     }
 
     // Take the next step in the physics simulation
-    void step(double simulationTime, double deltaTime);
+    int step(double simulationTime, double deltaTime);
 
 private:
     void resolveWallCollisions();
     void detectCollisions();
+    void checkPotentialCollisionPair(int i, int j, std::vector<Collision>& result) const;
+    void checkCollision(int i, int j, Vector2 firstPosition, Vector2 secondPosition, float firstRadius, float secondRadius, std::vector<Collision>& result) const;
     void resolveCollisions();
     void correctVelocities(const Collision& collision);
     void correctPositions(const Collision& collision);
     void spawnCircles(double simulationTime);
+
+    // Worker thread functions
+    void workerThread(int threadId);
 
 private:
     const Config m_config;
@@ -180,15 +189,33 @@ private:
     // The result from the last use of the spatial grid
     std::vector<std::pair<int, int>> m_potentialCollisionPairs;
 
-    // Temporary container for all collisions detected during the current step
-    std::vector<Collision> m_collisions;
-
     // World bounds
     float m_worldBoundX = 0.f;
     float m_worldBoundY = 0.f;
 
+    // Multi-threading
+
+    // Thread pool for parallel processing
+    std::vector<std::thread> m_threadPool;
+
+    // Flag to signal threads to exit
+    bool m_terminateThreads = false;
+
+    // Work queue and related synchronization
+    std::queue<std::function<void()>> m_workQueue;
+    std::mutex m_queueMutex;
+    std::condition_variable m_condition;
+
+    // Counts active worker threads
+    std::atomic<int> m_activeThreads;
+
+    // Temporary container for all collisions detected during the current step.
+    std::vector<std::vector<Collision>> m_collisions;
+
 public:
+    // These are typically untouched except for when profiling or debugging
     bool m_useSpatialPartitioning = true;
+    bool m_singleThreaded = false;
 };
 
 }

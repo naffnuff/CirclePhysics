@@ -17,7 +17,7 @@ public:
         float initialWindowWidth = 0.f;
         float initialWindowHeight = 0.f;
         bool outlineCircles = false;
-        float physicsFrequency = 0.f;
+        double physicsFrequency = 0.f;
         bool scalePhysics = false;
     };
 
@@ -37,7 +37,7 @@ public:
     void cleanUp();
 
 private:
-    Config m_config;
+    const Config m_config;
 
     // Global window dimensions that will be updated during resize
     float m_windowWidth = 0.f;
@@ -67,6 +67,8 @@ private:
     GLint m_interpolationFactorUniform = 0;
 
     Engine& m_engine;
+
+    double actualPhysicsFrequency = 0.f;
 
     friend void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 };
