@@ -8,7 +8,7 @@ Assumes you have a compiler capable of C++17.
 There is a VS 2022 solution in `vs2022`
 ### Linux (Ubuntu, Debian)
 #### With `gcc` and `make`
-1. Install basic build tools
+1. Install essential build tools (if needed)
 ```
 sudo apt update
 sudo apt install build-essential
