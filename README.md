@@ -1,10 +1,13 @@
 # Circle Physics
 A 2D physics simulator of circles.
 
-## Usage
+## Build and Usage
+Assumes you have a compiler capable of C++17.
 ### Windows
-There is a Visual Studion solution in `vs2022`
-### Linux (Debian, Ubuntu)
+#### With Visual Studio
+There is a VS 2022 solution in `vs2022`
+### Linux (Ubuntu, Debian)
+#### With gcc and make
 1. Install `glew`
 ```
 sudo apt install libglew-dev
