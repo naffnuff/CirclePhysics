@@ -4,10 +4,10 @@ A 2D physics simulator of circles.
 ## Build and Usage
 Assumes you have a compiler capable of C++17.
 ### Windows
-#### With Visual Studio
+#### With `Visual Studio`
 There is a VS 2022 solution in `vs2022`
 ### Linux (Ubuntu, Debian)
-#### With gcc and make
+#### With `gcc` and `make`
 1. Install `glew`
 ```
 sudo apt install libglew-dev
