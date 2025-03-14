@@ -62,6 +62,7 @@ private:
     GLuint m_outlineWidthBuffer = 0;
 
     GLuint m_circleShaderProgram = 0;
+
     GLint m_projectionUniform = 0;
     GLint m_outlineCirclesUniform = 0;
     GLint m_interpolationFactorUniform = 0;

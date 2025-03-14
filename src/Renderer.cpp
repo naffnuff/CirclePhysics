@@ -49,12 +49,11 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
             // Get current mouse position
             double xpos, ypos;
             glfwGetCursorPos(window, &xpos, &ypos);
-			
-			// TODO going to add some interaction here...
+
+            std::cout << xpos << ":" << ypos << std::endl;
         }
         else if (action == GLFW_RELEASE)
         {
-			//...here...
         }
     }
 }
@@ -62,9 +61,6 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
 // Cursor position callback
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
-
-    //...and here
 }
 
 // Utility function to compile shaders
@@ -481,6 +477,12 @@ void Renderer::run()
 
 void Renderer::cleanUp()
 {
+    if (m_window) glfwDestroyWindow(m_window);
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     if (m_vertexArray) glDeleteVertexArrays(1, &m_vertexArray);
     if (m_vertexBuffer) glDeleteBuffers(1, &m_vertexBuffer);
     if (m_indexBuffer) glDeleteBuffers(1, &m_indexBuffer);
@@ -494,6 +496,8 @@ void Renderer::cleanUp()
     if (m_radiusBuffer) glDeleteBuffers(1, &m_radiusBuffer);
     if (m_outlineWidthBuffer) glDeleteBuffers(1, &m_outlineWidthBuffer);
     if (m_circleShaderProgram) glDeleteProgram(m_circleShaderProgram);
+
+    m_window = nullptr;
 }
 
 }

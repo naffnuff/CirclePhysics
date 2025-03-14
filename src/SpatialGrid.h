@@ -59,10 +59,9 @@ public:
         }
         else
         {
-            //std::cerr << "World bounds: " << m_cellCountX << ":" << m_cellCountY << std::endl;
-            //std::cerr << "Position: " << position.x << ":" << position.y << std::endl;
-            //std::cerr << "Cell coords: " << cellX << ":" << cellY << std::endl;
-            //throw std::runtime_error("Nope");
+            // We can safely ignore circles that fall outside of the grid
+            // as this will mainly happen at window resize and those circles
+            // will quickly be brought back into the world
         }
     }
 
