@@ -6,6 +6,8 @@
 #include <thread>
 #include <mutex>
 #include <queue>
+#include <condition_variable>
+#include <atomic>
 
 #include "Vector2.h"
 #include "SpatialGrid.h"

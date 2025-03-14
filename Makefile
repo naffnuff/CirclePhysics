@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -O3 -march=native -mavx2 -ffast-math -flto -pthread -std=c++11
+CXXFLAGS = -O3 -march=native -ffast-math -flto -pthread -std=c++17
 LDFLAGS = -lGLEW -lglfw -lGL
 
 # Directories
@@ -30,7 +30,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	$(CXX) -c $< $(CXXFLAGS) -o $@
 
 # Debug build
-debug: CXXFLAGS = -g -Wall -Wextra -DDEBUG -pthread -std=c++11
+debug: CXXFLAGS = -g -Wall -Wextra -DDEBUG -pthread -std=c++17
 debug: all
 
 # Clean build files
