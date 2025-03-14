@@ -6,35 +6,31 @@ Assumes you have a compiler capable of C++17.
 ### Windows
 #### With `Visual Studio`
 There is a VS 2022 solution in `vs2022`
-### Linux (Ubuntu, Debian)
+### Ubuntu
 #### With `gcc` and `make`
 1. Install essential build tools (if needed)
 ```
 sudo apt update
 sudo apt install build-essential
 ```
-2. Install `glew`
+2. Install `glew` and `glfw`
 ```
-sudo apt install libglew-dev
+sudo apt install libglew-dev libglfw3-dev
 ```
-3. Install `glfw`
-```
-sudo apt install libglfw3-dev
-```
-4. Build the program with make
+3. Build the program with make
 ```
 make
 ```
-5. Run the program
+4. Run the program
 ```
 bin/circle_physics
 ```
-6. Run the program with parameters, one extreme example:
+5. Run the program with parameters, one extreme example:
 ```
 bin/circle_physics 1920 1200 1 5 100000 0 0 0.8 0 60 1 1
 ```
 ### Program parameters
-These command-line parameters will be read by the program, in order:
+These optional command-line parameters will be read by the program, in this particular order:
 ```
 Parameter (default value) - explanation
 
