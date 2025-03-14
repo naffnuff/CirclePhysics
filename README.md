@@ -7,11 +7,11 @@ There is a Visual Studion solution in `vs2022`
 ### Linux (Debian, Ubuntu)
 1. Install `glew`
 ```
-apt install glew
+sudo apt install libglew-dev
 ```
 2. Install `glfw`
 ```
-apt install glfw
+sudo apt install libglfw3-dev
 ```
 3. Build the program with make
 ```
