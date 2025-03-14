@@ -17,19 +17,19 @@ sudo apt install build-essential
 ```
 sudo apt install libglew-dev
 ```
-2. Install `glfw`
+3. Install `glfw`
 ```
 sudo apt install libglfw3-dev
 ```
-3. Build the program with make
+4. Build the program with make
 ```
 make
 ```
-4. Run the program
+5. Run the program
 ```
 bin/circle_physics
 ```
-5. Run the program with parameters, one extreme example:
+6. Run the program with parameters, one extreme example:
 ```
 bin/circle_physics 1920 1200 1 5 100000 0 0 0.8 0 60 1 1
 ```
