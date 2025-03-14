@@ -37,6 +37,36 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
     }
 }
 
+// Mouse button callback
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+    {
+        if (action == GLFW_PRESS)
+        {
+            // Get current mouse position
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+			
+			// TODO going to add some interaction here...
+        }
+        else if (action == GLFW_RELEASE)
+        {
+			//...here...
+        }
+    }
+}
+
+// Cursor position callback
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    Renderer* renderer = static_cast<Renderer*>(glfwGetWindowUserPointer(window));
+
+    //...and here
+}
+
 // Utility function to compile shaders
 GLuint compileShader(GLenum type, const char* source)
 {
@@ -117,6 +147,8 @@ void Renderer::initialize()
     // Set context
     glfwMakeContextCurrent(m_window);
     glfwSetKeyCallback(m_window, keyCallback);
+    glfwSetMouseButtonCallback(m_window, mouseButtonCallback);
+    glfwSetCursorPosCallback(m_window, cursorPositionCallback);
     glfwSetFramebufferSizeCallback(m_window, framebufferSizeCallback);
 
     // Enable VSync to match monitor refresh rate
@@ -305,7 +337,10 @@ void Renderer::run()
         // Update projection matrix based on current window dimensions
         const float aspectRatio = m_windowWidth / m_windowHeight;
 
-        m_engine.setWorldBounds(scale * aspectRatio, scale);
+        const float worldBoundX = scale * aspectRatio;
+        const float worldBoundY = scale;
+
+        m_engine.setWorldBounds(worldBoundX, worldBoundY);
 
         bool worldUpdated = false;
 

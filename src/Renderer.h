@@ -70,7 +70,12 @@ private:
 
     double actualPhysicsFrequency = 0.f;
 
+    // GLFW callback functions
+    friend void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+    friend void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+
     friend void framebufferSizeCallback(GLFWwindow* window, int width, int height);
+
 };
 
 }
