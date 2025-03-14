@@ -13,15 +13,32 @@ apt install glew
 ```
 apt install glfw
 ```
-3. Build the program with the following line
+3. Build the program with make
 ```
-g++ src/*.cpp -o my_program -lGLEW -lglfw -lGL
+make
 ```
 4. Run the program
 ```
-./my_program
+bin/circle_physics
 ```
-5. Run the program with parameters
+5. Run the program with parameters, one extreme example:
 ```
-./my_program
+bin/circle_physics 1920 1200 1 5 100000 0 0 0.8 0 60 1 1
+```
+### Program parameters
+These command-line parameters will be read by the program, in order:
+Parameter (default value) - explanation
+```
+Initial Window Width (1024)
+Initial Window Height (768)
+Minimum Radius (5)
+Maximum Radius (50)
+Spawn Limit (5000)
+Gravity (1) - Unit: half intital world height / second^2
+Spawn Rate (1) - Circles / second; 0 for everything at once
+Restitution (0.8) - 1 for full bounciness; 0 for no bounciness
+Outline Circles (0) - 1 to display the circles as outlined circles; 0 for filled disks
+Physics Frequency (60) - Physics updates / second (Hz)
+Scale Physics (1) - if 1, the physics frequency will be dynamically adjusted at high loads
+Correction Iterations (4) - more -> better stability for objects resting on each other
 ```
