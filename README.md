@@ -1,5 +1,5 @@
 # Circle Physics
-A 2D physics simulator of circles.
+A high-performance 2D physics simulator that efficiently manages thousands of colliding circles using spatial partitioning and multithreading. The project focuses on maximizing performance through data-oriented design, allowing for interactive framerates even with large numbers of physically accurate circle interactions.
 
 ## Build and Usage
 Assumes you have a compiler capable of C++17.
