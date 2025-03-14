@@ -3,7 +3,7 @@ A 2D physics simulator of circles.
 
 ## Usage
 ### Windows
-There is a Visual Studion solution in `vs2022`.
+There is a Visual Studion solution in `vs2022`
 ### Linux (Debian, Ubuntu)
 1. Install `glew`
 ```
@@ -27,8 +27,9 @@ bin/circle_physics 1920 1200 1 5 100000 0 0 0.8 0 60 1 1
 ```
 ### Program parameters
 These command-line parameters will be read by the program, in order:
-Parameter (default value) - explanation
 ```
+Parameter (default value) - explanation
+
 Initial Window Width (1024)
 Initial Window Height (768)
 Minimum Radius (5)
