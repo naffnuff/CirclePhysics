@@ -1,6 +1,6 @@
 # Compiler and flags
 CXX = g++
-CXXFLAGS = -O3 -march=native -ffast-math -flto -pthread -std=c++17
+CXXFLAGS = -O3 -march=native -flto -pthread -std=c++17
 LDFLAGS = -lGLEW -lglfw -lGL
 
 # Directories

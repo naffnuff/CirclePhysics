@@ -8,11 +8,11 @@ int main(int argc, char* argv[])
     // Default values
     float initialWindowWidth = 1024.f;
     float initialWindowHeight = 768.f;
-    float minRadius = 1.f;
-    float maxRadius = 5.f;
-    int spawnLimit = 50000;
-    float gravity = 0.f; // intital world height / second^2
-    float spawnRate = 0.f; // per second; 0 for everything at once
+    float minRadius = 5.f;
+    float maxRadius = 50.f;
+    int spawnLimit = 5000;
+    float gravity = 1.f; // intital world height / second^2
+    float spawnRate = 1.f; // per second; 0 for everything at once
     float restitution = 0.8f;
     bool outlineCircles = false; // whether to display the circles as outlined circles or filled disks
     double physicsFrequency = 60.0; // Hz; the frequency with which the physics will be stepped
