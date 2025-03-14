@@ -168,7 +168,7 @@ private:
     void correctPositions(const Collision& collision);
     void spawnCircles(double simulationTime);
 
-    // Worker thread functions
+    // Worker thread
     void workerThread(int threadId);
 
 private:

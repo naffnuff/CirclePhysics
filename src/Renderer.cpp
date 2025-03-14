@@ -181,10 +181,12 @@ void Renderer::initialize()
 
     // Create buffers for circles
     glGenVertexArrays(1, &m_vertexArray);
+
+    // For the static data
     glGenBuffers(1, &m_vertexBuffer);
     glGenBuffers(1, &m_indexBuffer);
 
-    // Create separate buffers for each attribute
+    // For each instance attribute
     glGenBuffers(1, &m_positionXBuffer);
     glGenBuffers(1, &m_positionYBuffer);
     glGenBuffers(1, &m_prevPositionXBuffer);
@@ -200,7 +202,7 @@ void Renderer::initialize()
 
     // Setup quad vertices and indices
 
-    // Setup the interleaved position buffer for the base quad vertices
+    // Setup the buffer for the base quad vertices
     glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
@@ -406,7 +408,7 @@ void Renderer::run()
         // Only update instance buffers when physics has been updated
         if (worldUpdated)
         {
-            int circleCount = circleData.getCircleCount();
+            const int circleCount = circleData.getCircleCount();
 
             // Update each attribute buffer with new data
             glBindBuffer(GL_ARRAY_BUFFER, m_positionXBuffer);
@@ -477,6 +479,8 @@ void Renderer::run()
 
 void Renderer::cleanUp()
 {
+    // Cleanup of all resources
+
     if (m_window) glfwDestroyWindow(m_window);
 
     glBindVertexArray(0);

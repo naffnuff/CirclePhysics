@@ -99,13 +99,13 @@ int Engine::step(double simulationTime, double deltaTime)
         }
 
         // Update position
-        m_circleData.positionsX[i] += m_circleData.velocitiesX[i] * deltaTime;
-        m_circleData.positionsY[i] += m_circleData.velocitiesY[i] * deltaTime;
+        m_circleData.positionsX[i] += m_circleData.velocitiesX[i] * (float)deltaTime;
+        m_circleData.positionsY[i] += m_circleData.velocitiesY[i] * (float)deltaTime;
     }
 
     resolveWallCollisions();
     detectCollisions();
-    const int collisionChecks = m_potentialCollisionPairs.size();
+    const int collisionChecks = (int)m_potentialCollisionPairs.size();
     resolveCollisions();
 
     return (int)collisionChecks;
@@ -188,10 +188,10 @@ void Engine::detectCollisions()
         else
         {
             // Number of worker threads in our pool
-            int numThreads = m_threadPool.size();
+            int numThreads = (int)m_threadPool.size();
 
             // Calculate work division
-            int totalPairs = m_potentialCollisionPairs.size();
+            int totalPairs = (int)m_potentialCollisionPairs.size();
             int pairsPerThread = (totalPairs + numThreads - 1) / numThreads;
 
             // Reset active threads counter
@@ -203,18 +203,18 @@ void Engine::detectCollisions()
 
                 for (int threadId = 0; threadId < numThreads; ++threadId)
                 {
-                    int startIdx = threadId * pairsPerThread;
-                    int endIdx = std::min((threadId + 1) * pairsPerThread, totalPairs);
+                    int startIndex = threadId * pairsPerThread;
+                    int endIndex = std::min((threadId + 1) * pairsPerThread, totalPairs);
 
-                    if (startIdx >= endIdx) break;
+                    if (startIndex >= endIndex) break;
 
                     // Create a task to process this batch
                     m_workQueue.push(
-                        [this, threadId, startIdx, endIdx]()
+                        [this, threadId, startIndex, endIndex]()
                         {
                             std::vector<Collision>& localCollisions = m_collisions[threadId];
 
-                            for (int i = startIdx; i < endIdx; ++i)
+                            for (int i = startIndex; i < endIndex; ++i)
                             {
                                 const std::pair<int, int>& pair = m_potentialCollisionPairs[i];
 
@@ -234,7 +234,7 @@ void Engine::detectCollisions()
             }
         }
     }
-    else
+    else // no spatial partitioning; naive approach
     {
         // For all potential circle pairs
         for (int i = 0; i < m_circleData.getCircleCount(); ++i)

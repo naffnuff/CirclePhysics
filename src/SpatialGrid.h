@@ -81,7 +81,7 @@ public:
                 //...and first check for collisions within the same cell...
                 for (size_t i = 0; i < cell.size(); ++i)
                 {
-                    //...with those that come after
+                    //...with only those that come after
                     for (size_t j = i + 1; j < cell.size(); ++j)
                     {
                         collisionPairs.push_back(std::make_pair(cell[i], cell[j]));
@@ -89,7 +89,7 @@ public:
                 }
 
                 // Then check the neighbouring cells, but only in right and down directions
-                // (if we imagine thise as a top-left to down-right search)
+                // (if we imagine this as a top-left to down-right search)
                 
                 // Right cell
                 if (x + 1 < m_cellCountX)
