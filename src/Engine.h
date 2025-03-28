@@ -191,6 +191,11 @@ private:
     // The result from the last use of the spatial grid
     std::vector<std::pair<int, int>> m_potentialCollisionPairs;
 
+    // The point at which we deem it worthwhile to use a multithreaded approach
+    const int m_multithreadingThreshold = 5000;
+
+    std::atomic<int> m_collisionDetectionEntries = 0;
+
     // World bounds
     float m_worldBoundX = 0.f;
     float m_worldBoundY = 0.f;
@@ -205,11 +210,12 @@ private:
 
     // Work queue and related synchronization
     std::queue<std::function<void()>> m_workQueue;
-    std::mutex m_queueMutex;
-    std::condition_variable m_condition;
+    std::mutex m_workQueueMutex;
+    std::condition_variable m_shouldWorkersWakeCondition;
+    std::condition_variable m_areWorkersDoneCondition;
 
     // Counts active worker threads
-    std::atomic<int> m_activeThreads;
+    std::atomic<int> m_activeThreadCounter;
 
     // Temporary container for all collisions detected during the current step.
     std::vector<std::vector<Collision>> m_collisions;

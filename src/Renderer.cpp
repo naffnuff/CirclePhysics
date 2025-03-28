@@ -347,7 +347,7 @@ void Renderer::run()
         {
             const double beforeStepTime = glfwGetTime();
             accumulatedCollisionChecks += m_engine.step(currentTime, fixedTimeStep);
-            const float stepTime = glfwGetTime() - beforeStepTime;
+            const double stepTime = glfwGetTime() - beforeStepTime;
             if (m_config.scalePhysics)
             {
                 if (actualPhysicsFrequency > 10.0 && stepTime > fixedTimeStep)
@@ -356,7 +356,7 @@ void Renderer::run()
                     actualPhysicsFrequency -= 1.0;
                     fixedTimeStep = 1.0 / actualPhysicsFrequency;
                 }
-                else if (actualPhysicsFrequency < m_config.physicsFrequency && stepTime < fixedTimeStep / 2.f)
+                else if (actualPhysicsFrequency < m_config.physicsFrequency && stepTime < fixedTimeStep / 2.0)
                 {
                     actualPhysicsFrequency += 1.0;
                     fixedTimeStep = 1.0 / actualPhysicsFrequency;
@@ -458,7 +458,7 @@ void Renderer::run()
         };
 
         // Calculate interpolation factor
-        const float interpolationFactor = accumulator / fixedTimeStep;
+        const float interpolationFactor = float(accumulator / fixedTimeStep);
 
         // Set uniforms
         glUniformMatrix4fv(m_projectionUniform, 1, GL_FALSE, projection);

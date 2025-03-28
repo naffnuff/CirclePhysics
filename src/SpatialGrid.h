@@ -95,9 +95,9 @@ public:
                 if (x + 1 < m_cellCountX)
                 {
                     const std::vector<T>& rightCell = m_grid[y * m_cellCountX + (x + 1)];
-                    for (T first : cell)
+                    for (const T& first : cell)
                     {
-                        for (T second : rightCell)
+                        for (const T& second : rightCell)
                         {
                             collisionPairs.push_back(std::make_pair(first, second));
                         }
@@ -108,9 +108,9 @@ public:
                 if (y + 1 < m_cellCountY)
                 {
                     const std::vector<T>& bottomCell = m_grid[(y + 1) * m_cellCountX + x];
-                    for (T first : cell)
+                    for (const T& first : cell)
                     {
-                        for (T second : bottomCell)
+                        for (const T& second : bottomCell)
                         {
                             collisionPairs.push_back(std::make_pair(first, second));
                         }
@@ -121,22 +121,22 @@ public:
                 if (x + 1 < m_cellCountX && y + 1 < m_cellCountY)
                 {
                     const std::vector<T>& bottomRightCell = m_grid[(y + 1) * m_cellCountX + (x + 1)];
-                    for (T first : cell)
+                    for (const T& first : cell)
                     {
-                        for (T second : bottomRightCell)
+                        for (const T& second : bottomRightCell)
                         {
                             collisionPairs.push_back(std::make_pair(first, second));
                         }
                     }
                 }
 
-                // Bottom-left cell (if we are not at the left edge)
+                // Bottom-left cell
                 if (x > 0 && y + 1 < m_cellCountY)
                 {
                     const std::vector<T>& bottomLeftCell = m_grid[(y + 1) * m_cellCountX + (x - 1)];
-                    for (T first : cell)
+                    for (const T& first : cell)
                     {
-                        for (T second : bottomLeftCell)
+                        for (const T& second : bottomLeftCell)
                         {
                             collisionPairs.push_back(std::make_pair(first, second));
                         }

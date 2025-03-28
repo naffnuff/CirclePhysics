@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <assert.h>
 
 namespace CirclePhysics
 {
@@ -36,6 +37,7 @@ Engine::Engine(const Config& config)
     m_collisions.resize(numThreads);
     for (std::vector<Collision>& collisions : m_collisions)
     {
+        // We can get more but this is a place to start
         collisions.reserve(config.spawnLimit);
     }
 
@@ -55,15 +57,15 @@ Engine::~Engine()
 {
     // Signal all threads to exit
     {
-        std::unique_lock<std::mutex> lock(m_queueMutex);
+        std::unique_lock<std::mutex> lock(m_workQueueMutex);
         m_terminateThreads = true;
     }
 
-    // Wake up all threads
-    m_condition.notify_all();
+    // Wake up all worker threads
+    m_shouldWorkersWakeCondition.notify_all();
 
     // Wait for all threads to finish
-    for (auto& thread : m_threadPool)
+    for (std::thread& thread : m_threadPool)
     {
         if (thread.joinable())
         {
@@ -154,6 +156,9 @@ void Engine::resolveWallCollisions()
 
 void Engine::detectCollisions()
 {
+    assert(m_collisionDetectionEntries == 0);
+    ++m_collisionDetectionEntries;
+
     // Clear collision vectors
     for (std::vector<Collision>& collisions : m_collisions)
     {
@@ -176,8 +181,8 @@ void Engine::detectCollisions()
         // Get potential collisions
         m_spatialGrid.getPotentialCollisions(m_potentialCollisionPairs);
 
-        // Up to a certain point, not worth the threading overhead
-        if (m_singleThreaded || m_potentialCollisionPairs.size() < 5000)
+        // Up to a certain point it's not worth the overhead to multithread
+        if (m_singleThreaded || m_potentialCollisionPairs.size() < m_multithreadingThreshold)
         {
             // Use sequential approach
             for (const std::pair<int, int>& pair : m_potentialCollisionPairs)
@@ -185,7 +190,7 @@ void Engine::detectCollisions()
                 checkPotentialCollisionPair(pair.first, pair.second, m_collisions[0]);
             }
         }
-        else
+        else // Multithreading
         {
             // Number of worker threads in our pool
             int numThreads = (int)m_threadPool.size();
@@ -195,11 +200,11 @@ void Engine::detectCollisions()
             int pairsPerThread = (totalPairs + numThreads - 1) / numThreads;
 
             // Reset active threads counter
-            m_activeThreads = 0;
+            m_activeThreadCounter = 0;
 
             // Submit tasks to work queue
             {
-                std::unique_lock<std::mutex> lock(m_queueMutex);
+                std::unique_lock<std::mutex> lock(m_workQueueMutex);
 
                 for (int threadId = 0; threadId < numThreads; ++threadId)
                 {
@@ -224,13 +229,16 @@ void Engine::detectCollisions()
                 }
             }
 
-            // Notify worker threads
-            m_condition.notify_all();
+            // Notify worker threads to start working
+            m_shouldWorkersWakeCondition.notify_all();
 
             // Wait for all tasks to complete
-            while (m_activeThreads > 0 || !m_workQueue.empty())
             {
-                std::this_thread::yield();
+                std::unique_lock<std::mutex> lock(m_workQueueMutex);
+                m_areWorkersDoneCondition.wait(lock, [this]()
+                    {
+                        return m_activeThreadCounter == 0 && m_workQueue.empty();
+                    });
             }
         }
     }
@@ -251,6 +259,8 @@ void Engine::detectCollisions()
             }
         }
     }
+
+    --m_collisionDetectionEntries;
 }
 
 void Engine::checkPotentialCollisionPair(int i, int j, std::vector<Collision>& result) const
@@ -286,6 +296,7 @@ void Engine::checkCollision(int i, int j, Vector2 firstPosition, Vector2 secondP
 
 void Engine::resolveCollisions()
 {
+    // Correct velocities
     for (const std::vector<Collision>& collisions : m_collisions)
     {
         for (const Collision& collision : collisions)
@@ -483,7 +494,7 @@ void Engine::spawnCircles(double simulationTime)
         const Vector2 position(spawnXDistribution(m_numberGenerator), spawnYDistribution(m_numberGenerator));
         const Vector2 velocity(velocityDistribution(m_numberGenerator), velocityDistribution(m_numberGenerator));
 
-        // Add to combined data structure
+        // Add to SoA data structure
         m_circleData.addCircle(
             position,
             velocity,
@@ -504,10 +515,10 @@ void Engine::workerThread(int threadId)
         std::function<void()> task;
 
         {
-            std::unique_lock<std::mutex> lock(m_queueMutex);
+            std::unique_lock<std::mutex> lock(m_workQueueMutex);
 
             // Wait for work or termination signal
-            m_condition.wait(lock,
+            m_shouldWorkersWakeCondition.wait(lock,
                 [this]()
                 {
                     return !m_workQueue.empty() || m_terminateThreads;
@@ -525,9 +536,16 @@ void Engine::workerThread(int threadId)
         }
 
         // Execute the task
-        m_activeThreads++;
+        m_activeThreadCounter++;
         task();
-        m_activeThreads--;
+        {
+            std::unique_lock<std::mutex> lock(m_workQueueMutex);
+            m_activeThreadCounter--;
+            if (m_activeThreadCounter == 0 && m_workQueue.empty())
+            {
+                m_areWorkersDoneCondition.notify_all();
+            }
+        }
     }
 }
 
