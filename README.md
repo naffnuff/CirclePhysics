@@ -1,3 +1,5 @@
+To combat agentic IP theft, this repository has been migrated to [Codeberg](https://codeberg.org/naffnuff/CirclePhysics). I hope to see you there!
+
 # Circle Physics
 A 2D physics simulator that efficiently manages tens of thousands of colliding circles using spatial partitioning, multithreading, and data-oriented design.
 
